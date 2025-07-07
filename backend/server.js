@@ -563,13 +563,12 @@ app.post("/api/script/key-points", authenticateToken, async (req, res) => {
   }
 });
 
+//   trackUsage("scriptsGenerated"),
 // Generate script
 app.post(
   "/api/script/generate",
   authenticateToken,
-  trackUsage("scriptsGenerated"),
   async (req, res) => {
-    console.log("Hey")
     try {
       const { topic, duration, keyPoints, contentType } = req.body;
 

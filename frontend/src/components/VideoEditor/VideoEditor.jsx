@@ -12,12 +12,7 @@ import {
   Film,
 } from "lucide-react";
 
-const VideoEditor = () => {
-  const [mediaLibrary, setMediaLibrary] = useState({
-    videos: [],
-    audios: [],
-    images: [],
-  });
+const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
   const [timelineItems, setTimelineItems] = useState([]);
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(60);
@@ -555,70 +550,73 @@ const VideoEditor = () => {
     removeFromTimeline(selectedTimelineItem.id);
   }, [selectedTimelineItem]);
 
- 
-  const addToTimeline = useCallback((mediaItem, startTime = null, targetTrackId = null) => {
-  if (!mediaItem || !mediaItem.name || !mediaItem.type) {
-    return;
-  }
-  console.log(targetTrackId)
+  const addToTimeline = useCallback(
+    (mediaItem, startTime = null, targetTrackId = null) => {
+      if (!mediaItem || !mediaItem.name || !mediaItem.type) {
+        return;
+      }
+      console.log(targetTrackId);
 
-  let trackId, trackType;
-  
-  if (mediaItem.type === "videos" || mediaItem.type === "video") {
-    trackId = "main-video";
-    trackType = "main";
-  } else if (mediaItem.type === "images" || mediaItem.type === "image") {
-    trackId = "overlay-1";
-    trackType = "overlay";
-  } else if (mediaItem.type === "audios" || mediaItem.type === "audio") {
-    trackId = "audio-1";
-    trackType = "audio";
-  } else {
-    return;
-  }
+      let trackId, trackType;
 
-  const duration = mediaItem.duration || (mediaItem.type.includes("image") ? 5 : 10);
+      if (mediaItem.type === "videos" || mediaItem.type === "video") {
+        trackId = "main-video";
+        trackType = "main";
+      } else if (mediaItem.type === "images" || mediaItem.type === "image") {
+        trackId = "overlay-1";
+        trackType = "overlay";
+      } else if (mediaItem.type === "audios" || mediaItem.type === "audio") {
+        trackId = "audio-1";
+        trackType = "audio";
+      } else {
+        return;
+      }
 
-  setTimelineItems((prevItems) => {
-    const trackItems = prevItems
-      .filter((item) => item.trackId === trackId)
-      .sort((a, b) => a.startTime - b.startTime);
+      const duration =
+        mediaItem.duration || (mediaItem.type.includes("image") ? 5 : 10);
 
-    // Вычисляем позицию для нового элемента
-    let newStartTime;
-    if (startTime !== null) {
-      newStartTime = startTime;
-    } else if (trackItems.length === 0) {
-      newStartTime = 0;
-    } else {
-      // Размещаем сразу после последнего элемента
-      const lastItem = trackItems[trackItems.length - 1];
-      newStartTime = lastItem.startTime + lastItem.duration;
-    }
+      setTimelineItems((prevItems) => {
+        const trackItems = prevItems
+          .filter((item) => item.trackId === trackId)
+          .sort((a, b) => a.startTime - b.startTime);
 
-    // Создаем новый элемент
-    const newTimelineItem = {
-      id: Date.now() + Math.random(),
-      mediaId: mediaItem.id,
-      type: mediaItem.type,
-      name: mediaItem.name,
-      url: mediaItem.url,
-      startTime: newStartTime,
-      duration: duration,
-      trackId: trackId,
-      trackType: trackType,
-      volume: 1,
-      opacity: 1,
-    };
+        // Вычисляем позицию для нового элемента
+        let newStartTime;
+        if (startTime !== null) {
+          newStartTime = startTime;
+        } else if (trackItems.length === 0) {
+          newStartTime = 0;
+        } else {
+          // Размещаем сразу после последнего элемента
+          const lastItem = trackItems[trackItems.length - 1];
+          newStartTime = lastItem.startTime + lastItem.duration;
+        }
 
-    return [...prevItems, newTimelineItem];
-  });
+        // Создаем новый элемент
+        const newTimelineItem = {
+          id: Date.now() + Math.random(),
+          mediaId: mediaItem.id,
+          type: mediaItem.type,
+          name: mediaItem.name,
+          url: mediaItem.url,
+          startTime: newStartTime,
+          duration: duration,
+          trackId: trackId,
+          trackType: trackType,
+          volume: 1,
+          opacity: 1,
+        };
 
-  const estimatedEndTime = (startTime || 0) + duration;
-  if (estimatedEndTime > videoDuration) {
-    setVideoDuration(estimatedEndTime + 10);
-  }
-}, [videoDuration]);
+        return [...prevItems, newTimelineItem];
+      });
+
+      const estimatedEndTime = (startTime || 0) + duration;
+      if (estimatedEndTime > videoDuration) {
+        setVideoDuration(estimatedEndTime + 10);
+      }
+    },
+    [videoDuration]
+  );
 
   const handleMediaLibraryClick = (item) => {
     if (!item || !item.name || !item.type) {

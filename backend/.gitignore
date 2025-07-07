@@ -21,3 +21,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+echo "backend/.env" >> .gitignore
+# или более общий вариант
+echo "*.env" >> .gitignore

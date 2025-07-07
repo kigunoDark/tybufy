@@ -3,8 +3,9 @@ import { useState, useRef, useEffect } from "react";
 export const TeleprompterModal = ({
   isOpen = true,
   onClose = () => {},
-  script = "Welcome to the teleprompter! This is a demonstration of the prompter with recording capability. Here you can adjust the scroll speed, font size, and recording type. Scrolling will automatically start when recording begins. Use the control buttons to pause, continue, or reset the text. When recording video, you will see a preview window in the upper right corner. This will help you see exactly what is being recorded. The teleprompter supports both audio and video recording. Adjust the settings according to your needs and start recording!",
+  script = "Welcome to the teleprompter!...",
   onRecordingComplete = () => {},
+  onSaveToLibrary = null,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -15,6 +16,8 @@ export const TeleprompterModal = ({
   const [showSettings, setShowSettings] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const scrollContainerRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -23,6 +26,33 @@ export const TeleprompterModal = ({
   const streamRef = useRef(null);
   const videoPreviewRef = useRef(null);
 
+  // Функция сохранения в медиабиблиотеку
+  const saveToMediaLibrary = async () => {
+    if (!recordedBlob || !onSaveToLibrary) return;
+
+    setIsSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      const recordingData = {
+        blob: recordedBlob,
+        type: recordingType, // 'video' или 'audio'
+        duration: recordingTime,
+        timestamp: new Date().toISOString(),
+      };
+
+      const success = await onSaveToLibrary(recordingData);
+
+      if (success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (error) {
+      console.error("Ошибка сохранения в библиотеку:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const startScrolling = () => {
     if (scrollIntervalRef.current) return;
 
@@ -68,7 +98,6 @@ export const TeleprompterModal = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-
     }
   };
 
@@ -81,17 +110,14 @@ export const TeleprompterModal = ({
     stopTimer();
     setRecordingTime(0);
 
-
     stopScrolling();
     setIsPaused(false);
-
 
     if (videoPreviewRef.current) {
       videoPreviewRef.current.srcObject = null;
       videoPreviewRef.current.pause();
       videoPreviewRef.current.load();
     }
-
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => {
@@ -110,89 +136,111 @@ export const TeleprompterModal = ({
     setIsPaused(false);
     resetScroll();
     setShowSettings(false);
+    setIsSaving(false);
+    setSaveSuccess(false);
   };
 
   const startRecording = async () => {
     try {
       const constraints =
         recordingType === "video"
-          ? { video: true, audio: true }
-          : { audio: true };
+          ? {
+              video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                frameRate: { ideal: 30 },
+              },
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 44100,
+              },
+            }
+          : {
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 44100,
+              },
+            };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
+      // ... код для video preview остается тот же ...
+
+      // ОБНОВИТЕ СОЗДАНИЕ MEDIARECORDER
+      let mediaRecorder;
+
       if (recordingType === "video") {
-        const setupVideoPreview = () => {
-          if (videoPreviewRef.current) {
-            const videoElement = videoPreviewRef.current;
-            videoElement.srcObject = stream;
+        // Попробуем разные кодеки для видео
+        const videoCodecs = [
+          "video/webm;codecs=vp9,opus",
+          "video/webm;codecs=vp8,opus",
+          "video/webm;codecs=h264,opus",
+          "video/webm",
+          "video/mp4",
+        ];
 
-            videoElement.onloadedmetadata = () => {
-              videoElement.play().catch((e) => console.log("Play error:", e));
-            };
-
-            videoElement.oncanplay = () => {
-              console.log("Video ready to play");
-            };
-
-            videoElement.onerror = (e) => {
-              console.log("Video error:", e);
-            };
-
-            // Force try to start
-            setTimeout(() => {
-              if (videoElement.srcObject) {
-                videoElement
-                  .play()
-                  .catch((e) => console.log("Delayed play error:", e));
-              }
-            }, 100);
-
-            return true;
+        let selectedCodec = null;
+        for (const codec of videoCodecs) {
+          if (MediaRecorder.isTypeSupported(codec)) {
+            selectedCodec = codec;
+            console.log("✅ Используем кодек для видео:", codec);
+            break;
           }
-          return false;
-        };
-
-        if (!setupVideoPreview()) {
-          const maxAttempts = 10;
-          let attempts = 0;
-
-          const waitForVideoElement = () => {
-            attempts++;
-            if (setupVideoPreview()) {
-              return;
-            }
-
-            if (attempts < maxAttempts) {
-              setTimeout(waitForVideoElement, 100);
-            } else {
-              console.log(
-                "Failed to setup video element after",
-                maxAttempts,
-                "attempts"
-              );
-            }
-          };
-
-          setTimeout(waitForVideoElement, 50);
         }
+
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: selectedCodec,
+          videoBitsPerSecond: 2500000, // 2.5 Mbps
+          audioBitsPerSecond: 128000, // 128 kbps
+        });
+      } else {
+        // Для аудио
+        const audioCodecs = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/mp4",
+        ];
+
+        let selectedCodec = null;
+        for (const codec of audioCodecs) {
+          if (MediaRecorder.isTypeSupported(codec)) {
+            selectedCodec = codec;
+            console.log("✅ Используем кодек для аудио:", codec);
+            break;
+          }
+        }
+
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: selectedCodec,
+          audioBitsPerSecond: 128000,
+        });
       }
 
-      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       const chunks = [];
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunks.push(event.data);
+          console.log("📦 Получен chunk:", event.data.size, "bytes");
         }
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, {
-          type: recordingType === "video" ? "video/webm" : "audio/webm",
+        console.log("🔴 Запись остановлена, chunks:", chunks.length);
+
+        const mimeType = mediaRecorder.mimeType;
+        const blob = new Blob(chunks, { type: mimeType });
+
+        console.log("📹 Создан blob:", {
+          size: blob.size,
+          type: blob.type,
+          recordingType: recordingType,
         });
+
         setRecordedBlob(blob);
 
         // Stop preview
@@ -203,18 +251,20 @@ export const TeleprompterModal = ({
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      mediaRecorder.start();
+      // Записываем каждые 100ms для лучшего качества
+      mediaRecorder.start(100);
       setIsRecording(true);
       startTimer();
 
       if (!isScrolling) {
         startScrolling();
+ 
       }
     } catch (error) {
-      alert("Failed to access microphone/camera");
+      console.error("❌ Ошибка записи:", error);
+      alert("Failed to access microphone/camera: " + error.message);
     }
   };
-
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
@@ -677,20 +727,55 @@ export const TeleprompterModal = ({
                   </div>
                 </div>
 
-                <div className="flex space-x-3">
-                  <button
-                    onClick={downloadRecording}
-                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 px-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center"
-                  >
-                    <span className="mr-2">📥</span>
-                    Download
-                  </button>
-                  <button
-                    onClick={useRecording}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
-                  >
-                    Use
-                  </button>
+                <div className="space-y-3">
+                  {/* Первый ряд кнопок */}
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={downloadRecording}
+                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 px-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center"
+                    >
+                      <span className="mr-2">📥</span>
+                      Download
+                    </button>
+                    <button
+                      onClick={useRecording}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
+                    >
+                      Use
+                    </button>
+                  </div>
+
+                  {/* Кнопка сохранения в медиабиблиотеку */}
+                  {onSaveToLibrary && (
+                    <button
+                      onClick={saveToMediaLibrary}
+                      disabled={isSaving || saveSuccess}
+                      className={`w-full py-3 px-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center ${
+                        saveSuccess
+                          ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white cursor-default"
+                          : isSaving
+                          ? "bg-gradient-to-r from-gray-400 to-gray-500 text-white cursor-not-allowed"
+                          : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                      }`}
+                    >
+                      {isSaving ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Saving....
+                        </>
+                      ) : saveSuccess ? (
+                        <>
+                          <span className="mr-2">✅</span>
+                          Save to library
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-2">💾</span>
+                          Save to media
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             )}

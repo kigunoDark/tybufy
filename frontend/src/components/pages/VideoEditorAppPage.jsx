@@ -33,6 +33,8 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("authToken");
+    console.log("show token");
+    console.log(token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -78,6 +80,11 @@ const VideoEditorApp = () => {
   const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [isExtendingScript, setIsExtendingScript] = useState(false);
   const [showTeleprompter, setShowTeleprompter] = useState(false);
+  const [mediaLibrary, setMediaLibrary] = useState({
+    videos: [],
+    audios: [],
+    images: [],
+  });
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState("");
@@ -112,6 +119,117 @@ const VideoEditorApp = () => {
     })();
   }, [script, isAuthenticated]);
 
+  // Функция для получения метаданных файла
+  const getFileMetadata = async (file, type) => {
+    const metadata = { duration: 0, width: 0, height: 0 };
+
+    try {
+      if (type === "videos") {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.src = URL.createObjectURL(file);
+
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            metadata.duration = video.duration || 0;
+            metadata.width = video.videoWidth || 0;
+            metadata.height = video.videoHeight || 0;
+            URL.revokeObjectURL(video.src);
+            resolve();
+          };
+          video.onerror = () => {
+            URL.revokeObjectURL(video.src);
+            resolve();
+          };
+          setTimeout(resolve, 3000);
+        });
+      } else if (type === "audios") {
+        const audio = document.createElement("audio");
+        audio.preload = "metadata";
+        audio.src = URL.createObjectURL(file);
+
+        await new Promise((resolve) => {
+          audio.onloadedmetadata = () => {
+            metadata.duration = audio.duration || 0;
+            URL.revokeObjectURL(audio.src);
+            resolve();
+          };
+          audio.onerror = () => {
+            URL.revokeObjectURL(audio.src);
+            resolve();
+          };
+          setTimeout(resolve, 3000);
+        });
+      }
+    } catch (e) {
+      console.warn("Не удалось получить метаданные файла:", e);
+    }
+
+    return metadata;
+  };
+
+  // Функция сохранения записи в медиабиблиотеку
+  const saveRecordingToLibrary = async (recordingData) => {
+    console.log("🔍 Сохраняем запись:", recordingData);
+
+    const { blob, type, duration } = recordingData;
+
+    // Создаем правильное расширение файла на основе MIME типа
+    let fileExtension = "webm";
+    if (blob.type.includes("mp4")) {
+      fileExtension = "mp4";
+    } else if (blob.type.includes("webm")) {
+      fileExtension = "webm";
+    }
+
+    const mediaType = type === "video" ? "videos" : "audios";
+    const fileName = `${type}_запись_${Date.now()}.${fileExtension}`;
+
+    try {
+      // Создаем URL с правильными настройками
+      const url = URL.createObjectURL(blob);
+
+      console.log("📹 Создаем файл:", {
+        name: fileName,
+        type: mediaType,
+        mimeType: blob.type,
+        size: blob.size,
+        url: url,
+      });
+
+      const fileData = {
+        id: Date.now() + Math.random(),
+        name: fileName,
+        type: mediaType,
+        mediaType: mediaType,
+        mimeType: blob.type,
+        size: blob.size,
+        duration: duration || 0,
+        width: type === "video" ? 1280 : 0,
+        height: type === "video" ? 720 : 0,
+        createdAt: new Date().toISOString(),
+        source: "teleprompter",
+        url: url,
+        blob: blob, // Сохраняем оригинальный blob
+      };
+
+      setMediaLibrary((prev) => {
+        const newLibrary = {
+          ...prev,
+          [mediaType]: [...(prev[mediaType] || []), fileData],
+        };
+        console.log("📚 Обновленная медиабиблиотека:", newLibrary);
+        return newLibrary;
+      });
+
+      console.log(`✅ Запись сохранена: ${fileName}`);
+      return true;
+    } catch (error) {
+  
+      console.error("❌ Ошибка сохранения:", error);
+      return false;
+    }
+  };
   // Функция для демо-аутентификации (в реальном приложении замените на настоящую)
   const handleDemoLogin = async () => {
     try {
@@ -193,7 +311,6 @@ const VideoEditorApp = () => {
         contentType,
       });
 
-      
       const { keyPoints } = response.data.data;
       const newKeyPoints = keyPoints.points || keyPoints;
 
@@ -546,7 +663,10 @@ const VideoEditorApp = () => {
             isLeftPanelCollapsed ? "w-[92%] min-w-[92%]" : "w-[90%] min-w-[69%]"
           }`}
         >
-          <VideoEditor />
+          <VideoEditor
+            mediaLibrary={mediaLibrary}
+            setMediaLibrary={setMediaLibrary}
+          />
           <div className="bg-white/80 backdrop-blur-xl rounded-2xl mt-5 p-6 border border-slate-200/50 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
@@ -784,6 +904,7 @@ const VideoEditorApp = () => {
         onClose={() => setShowTeleprompter(false)}
         script={script}
         onRecordingComplete={handleTeleprompterRecording}
+        onSaveToLibrary={saveRecordingToLibrary}
       />
     </div>
   );

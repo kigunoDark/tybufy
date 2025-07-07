@@ -192,6 +192,7 @@ export const Timeline = ({
   const handleWheel = useCallback(
     (e) => {
       if (e.ctrlKey) {
+ 
         e.preventDefault();
 
         if (!timelineScrollRef.current) return;
