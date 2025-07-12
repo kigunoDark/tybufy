@@ -5,6 +5,7 @@ export const TeleprompterModal = ({
   onClose = () => {},
   script = "Welcome to the teleprompter!...",
   onRecordingComplete = () => {},
+  setCurrentStep,
   onSaveToLibrary = null,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -29,8 +30,7 @@ export const TeleprompterModal = ({
   // Функция сохранения в медиабиблиотеку
   const saveToMediaLibrary = async () => {
     if (!recordedBlob || !onSaveToLibrary) return;
-
-    setIsSaving(true);
+    setCurrentStep(4);
     setSaveSuccess(false);
 
     try {
@@ -167,9 +167,6 @@ export const TeleprompterModal = ({
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
-      // ... код для video preview остается тот же ...
-
-      // ОБНОВИТЕ СОЗДАНИЕ MEDIARECORDER
       let mediaRecorder;
 
       if (recordingType === "video") {
@@ -258,7 +255,6 @@ export const TeleprompterModal = ({
 
       if (!isScrolling) {
         startScrolling();
- 
       }
     } catch (error) {
       console.error("❌ Ошибка записи:", error);

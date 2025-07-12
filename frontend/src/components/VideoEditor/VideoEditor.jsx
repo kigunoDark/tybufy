@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MediaLibrary } from "../MediaLibrary";
-import { Timeline } from "../Timeline";
+import { Timeline } from "../Timeline/Timeline";
+import FFmpegVideoExporter, { useFFmpegExporter } from "../FFmpegVideoExporter";
 
 import {
   Play,
@@ -29,8 +30,9 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isTimelineDragging, setIsTimelineDragging] = useState(false);
   const [copiedItem, setCopiedItem] = useState(null);
+  const { isExportModalOpen, openExportModal, closeExportModal } =
+    useFFmpegExporter();
 
-  // Состояния для resize
   const [isResizing, setIsResizing] = useState(false);
 
   // Состояния для управления overlays на видео
@@ -136,23 +138,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     }
   }, []);
 
-  const checkCollision = useCallback(
-    (newItem, excludeId = null) => {
-      return timelineItems.some((item) => {
-        if (item.id === excludeId) return false;
-        if (item.trackId !== newItem.trackId) return false;
-
-        const itemStart = item.startTime;
-        const itemEnd = item.startTime + item.duration;
-        const newStart = newItem.startTime;
-        const newEnd = newItem.startTime + newItem.duration;
-
-        return newStart < itemEnd && newEnd > itemStart;
-      });
-    },
-    [timelineItems]
-  );
-
   const insertWithRipple = useCallback(
     (trackId, insertTime, duration, excludeId = null) => {
       const trackItems = timelineItems
@@ -249,37 +234,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     [videoDuration]
   );
 
-  const findNextAvailablePosition = useCallback(
-    (trackId, duration, preferredStart = 0) => {
-      const trackItems = timelineItems
-        .filter((item) => item.trackId === trackId)
-        .sort((a, b) => a.startTime - b.startTime);
-
-      console.log(
-        `🔍 Ищем место для длительности ${duration} на треке ${trackId}`
-      );
-
-      // Если трек пустой
-      if (trackItems.length === 0) {
-        console.log(`✅ Трек пустой, размещаем в позицию: 0`);
-        return 0;
-      }
-
-      // ✅ ИСПРАВЛЕНО: размещаем сразу после последнего элемента + небольшой отступ
-      const lastItem = trackItems[trackItems.length - 1];
-      const nextPosition = lastItem.startTime + lastItem.duration + 0.1; // отступ 0.1 сек
-
-      console.log(
-        `✅ Последний элемент "${lastItem.name}" заканчивается в ${
-          lastItem.startTime + lastItem.duration
-        }`
-      );
-      console.log(`✅ Размещаем новый элемент в позицию: ${nextPosition}`);
-      return nextPosition;
-    },
-    [timelineItems]
-  );
-
   const removeFromTimeline = (itemId) => {
     const audioElement = audioElementsRef.current.get(itemId);
     if (audioElement) {
@@ -292,7 +246,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     setSelectedTimelineItem(null);
   };
 
-  // Функции для управления overlays
   const getOverlayTransform = useCallback(
     (overlayId) => {
       return (
@@ -463,7 +416,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     [getOverlayTransform, updateOverlayTransform]
   );
 
-  // Функции для работы с элементами таймлайна
   const splitTimelineItem = useCallback(() => {
     if (!selectedTimelineItem) return;
 
@@ -774,7 +726,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     });
   }, [timelineItems]);
 
-  // Обработка клавиатурных шорткатов
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
@@ -1179,6 +1130,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
         <Timeline
           timelineItems={timelineItems}
           setTimelineItems={setTimelineItems}
+          setShowExportModal={openExportModal}
           currentTime={currentTime}
           videoDuration={videoDuration}
           setVideoDuration={setVideoDuration}
@@ -1214,6 +1166,14 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
           }}
         />
       </div>
+
+      <FFmpegVideoExporter
+        isOpen={isExportModalOpen}
+        onClose={closeExportModal}
+        timelineItems={timelineItems}
+        tracks={tracks}
+        videoDuration={videoDuration}
+      />
     </div>
   );
 };

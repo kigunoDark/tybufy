@@ -6,7 +6,6 @@ const jwt = require("jsonwebtoken");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
-const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const { body, validationResult } = require("express-validator");
@@ -101,7 +100,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
@@ -113,11 +112,7 @@ app.use("/output", express.static(path.join(__dirname, "output")));
 
 // MongoDB connection
 mongoose.connect(
-  process.env.MONGODB_URI || "mongodb://localhost:27017/scriptify",
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }
+  process.env.MONGODB_URI || "mongodb://localhost:27017/scriptify"
 );
 
 mongoose.connection.on("connected", () => {
@@ -125,7 +120,16 @@ mongoose.connection.on("connected", () => {
 });
 
 mongoose.connection.on("error", (err) => {
-  console.error("❌ MongoDB connection error:", err);
+  console.error("❌ MongoDB connection error:", err.message);
+
+  // Fallback to local MongoDB if Atlas fails
+  if (err.message.includes("Atlas") || err.message.includes("SSL")) {
+    console.log("🔄 Trying fallback to local MongoDB...");
+    mongoose
+      .connect("mongodb://localhost:27017/scriptify")
+      .then(() => console.log("✅ Connected to local MongoDB"))
+      .catch(() => console.log("❌ Local MongoDB also failed"));
+  }
 });
 
 // User Schema
@@ -539,7 +543,7 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
 // Generate key points
 app.post("/api/script/key-points", authenticateToken, async (req, res) => {
   try {
-    const { topic, contentType } = req.body;
+    const { topic, contentType, language } = req.body;
 
     if (!topic) {
       return res.status(400).json({
@@ -548,7 +552,11 @@ app.post("/api/script/key-points", authenticateToken, async (req, res) => {
       });
     }
 
-    const result = await generateKeyPoints(topic, contentType || "Лайфстайл");
+    const result = await generateKeyPoints(
+      topic,
+      contentType || "Lifestyle",
+      language
+    );
 
     res.json({
       success: true,
@@ -565,50 +573,47 @@ app.post("/api/script/key-points", authenticateToken, async (req, res) => {
 
 //   trackUsage("scriptsGenerated"),
 // Generate script
-app.post(
-  "/api/script/generate",
-  authenticateToken,
-  async (req, res) => {
-    try {
-      const { topic, duration, keyPoints, contentType } = req.body;
+app.post("/api/script/generate", authenticateToken, async (req, res) => {
+  try {
+    const { topic, duration, keyPoints, contentType, language } = req.body;
 
-      if (!topic) {
-        return res.status(400).json({
-          success: false,
-          error: "Topic is required",
-        });
-      }
-
-      const script = await generateScript(
-        topic,
-        duration,
-        keyPoints || [],
-        contentType || "Лайфстайл"
-      );
-
-      // Update user usage
-      await User.findByIdAndUpdate(req.user._id, {
-        $inc: { "usage.scriptsGenerated": 1 },
-      });
-
-      res.json({
-        success: true,
-        data: { script },
-      });
-    } catch (error) {
-      console.error("Script generation error:", error);
-      res.status(500).json({
+    if (!topic) {
+      return res.status(400).json({
         success: false,
-        error: error.message || "Failed to generate script",
+        error: "Topic is required",
       });
     }
+
+    const script = await generateScript(
+      topic,
+      duration,
+      keyPoints || [],
+      contentType || "Лайфстайл",
+      language
+    );
+
+    // Update user usage
+    await User.findByIdAndUpdate(req.user._id, {
+      $inc: { "usage.scriptsGenerated": 1 },
+    });
+
+    res.json({
+      success: true,
+      data: { script },
+    });
+  } catch (error) {
+    console.error("Script generation error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate script",
+    });
   }
-);
+});
 
 // Improve script
 app.post("/api/script/improve", authenticateToken, async (req, res) => {
   try {
-    const { selectedText, improvementCommand, script } = req.body;
+    const { selectedText, improvementCommand, script, language } = req.body;
 
     if (!selectedText || !improvementCommand || !script) {
       return res.status(400).json({
@@ -621,7 +626,8 @@ app.post("/api/script/improve", authenticateToken, async (req, res) => {
     const improvedText = await improveArticle(
       selectedText,
       improvementCommand,
-      script
+      script,
+      language
     );
 
     res.json({
@@ -640,7 +646,7 @@ app.post("/api/script/improve", authenticateToken, async (req, res) => {
 // Analyze script quality
 app.post("/api/script/quality", authenticateToken, async (req, res) => {
   try {
-    const { script } = req.body;
+    const { script, language } = req.body;
 
     if (!script) {
       return res.status(400).json({
@@ -649,7 +655,7 @@ app.post("/api/script/quality", authenticateToken, async (req, res) => {
       });
     }
 
-    const quality = await getScriptQuality(script);
+    const quality = await getScriptQuality(script, language);
 
     res.json({
       success: true,
@@ -667,7 +673,7 @@ app.post("/api/script/quality", authenticateToken, async (req, res) => {
 // Extend script
 app.post("/api/script/extend", authenticateToken, async (req, res) => {
   try {
-    const { script, topic, contentType } = req.body;
+    const { script, topic, contentType, language } = req.body;
 
     if (!script || !topic) {
       return res.status(400).json({
@@ -679,7 +685,8 @@ app.post("/api/script/extend", authenticateToken, async (req, res) => {
     const extension = await extendScript(
       script,
       topic,
-      contentType || "Лайфстайл"
+      contentType || "Лайфстайл",
+      language
     );
 
     res.json({

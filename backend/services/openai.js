@@ -7,7 +7,8 @@ async function generateScript(
   topic,
   duration = "medium",
   keyPoints = [],
-  contentType = "Лайфстайл"
+  contentType = "Лайфстайл",
+  language = "eng"
 ) {
   let wordCount = 800;
   let detailLevel = "подробный";
@@ -56,21 +57,19 @@ async function generateScript(
   7. Добавь эмоциональные интонации и драматизм, подходящие для обзора такой масштабной игры
 
   ### Требования:
-  - Язык: Русский
   - Тон: Профессиональный, но доступный
   - Добавьте эмоциональную окраску, чтобы удержать внимание
   - Используйте простые слова, избегайте жаргона
   - Колличество слова ${wordCount}
 
-  Пример начала:
-"Всем привет! Знаете что делает игру по-настоящему легендарной? Неповторимый мир, захватывающий сюжет и столь полная свобода действий, что каждый выбор кажется судьбоносным..."
+  Ответьте на выбранном языке: ${language}
 `;
 
   try {
     const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions ",
+      "https://api.openai.com/v1/chat/completions",
       {
-        model: "gpt-4-turbo",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "user",
@@ -78,7 +77,7 @@ async function generateScript(
           },
         ],
         max_tokens: wordCount,
-        temperature: 1,
+        temperature: 0.7,
       },
       {
         headers: {
@@ -94,8 +93,7 @@ async function generateScript(
     throw new Error("Не удалось сгенерировать сценарий");
   }
 }
-
-async function generateKeyPoints(topic, contentType) {
+async function generateKeyPoints(topic, contentType, language = "eng") {
   const prompt = `
     Сгенерируй список из 10 ключевых пунктов по теме: "${topic}"
     Тип контента: ${contentType}
@@ -104,20 +102,21 @@ async function generateKeyPoints(topic, contentType) {
     - Массив строк
     - Каждый пункт должен быть коротким и информативным
     - Без лишнего текста
+      Ответьте на выбранном языке: ${language}
   `;
 
   try {
     const response = await axios.post(
       "https://api.openai.com/v1/chat/completions ",
       {
-        model: "gpt-4-turbo",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "user",
             content: prompt,
           },
         ],
-        temperature: 1,
+        temperature: 0.7,
       },
       {
         headers: {
@@ -146,7 +145,12 @@ async function generateKeyPoints(topic, contentType) {
   }
 }
 
-async function improveArticle(selectedText, improvementCommand, script) {
+async function improveArticle(
+  selectedText,
+  improvementCommand,
+  script,
+  language = "eng"
+) {
   const prompt = `
   Вы — профессиональный редактор YouTube-сценариев. Получите полный текст сценария и выделенный фрагмент, который нужно улучшить.
 
@@ -172,20 +176,21 @@ async function improveArticle(selectedText, improvementCommand, script) {
   - При "Улучшить структуру" — переформулируй так, чтобы он логично вписался в сценарий.
 
   Верните **только улучшенную версию выделенного фрагмента**, без пояснений и лишних слов.
+  Ответьте на выбранном языке: ${language}
   `;
 
   try {
     const response = await axios.post(
       "https://api.openai.com/v1/chat/completions ",
       {
-        model: "gpt-4-turbo",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "user",
             content: prompt,
           },
         ],
-        temperature: 1,
+        temperature: 0.7,
       },
       {
         headers: {
@@ -202,7 +207,7 @@ async function improveArticle(selectedText, improvementCommand, script) {
   }
 }
 
-async function getScriptQuality(script) {
+async function getScriptQuality(script, language = "eng") {
   const prompt = `
 Ты — эксперт по YouTube-сценариям. Проанализируй следующий текст и верни результат в формате JSON.
 
@@ -235,6 +240,7 @@ ${script}
 - total_score: общая оценка от 1 до 10
 - recommendations: массив из 3 рекомендаций по улучшению
 
+ Ответьте на выбранном языке: ${language}
 ### Формат вывода:
 {
   "structure": 9,
@@ -272,7 +278,12 @@ ${script}
   return response.data.choices[0].message.content;
 }
 
-async function extendScript(script, topic, contentType = "Лайфстайл") {
+async function extendScript(
+  script,
+  topic,
+  contentType = "Лайфстайл",
+  language = "eng"
+) {
   const prompt = `
 Вы — профессиональный видеоредактор YouTube-каналов. Ваша задача — естественно продолжить сценарий видео, дополнив его **тремя новыми логичными абзацами**, которые плавно вытекают из уже написанной части.
 
@@ -293,6 +304,7 @@ ${script}
 7. Убедитесь, что продолжение логично вписывается в общий контекст.
 
 Верните только **продолжение сценария**, без объяснений и лишних слов.
+  Ответьте на выбранном языке: ${language}
 `;
 
   try {

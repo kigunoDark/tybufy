@@ -355,7 +355,7 @@ export const MediaLibrary = ({
         {/* Счетчик файлов */}
         {getTotalFiles() > 0 && (
           <div className="text-xs text-blue-600 mt-1">
-            Всего файлов: {getTotalFiles()} • Сохранено в браузере
+            All files: {getTotalFiles()} • saved in browser
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import VideoEditor from "../VideoEditor/VideoEditor";
 import ContentStudio from "../ContentStudio";
@@ -8,16 +8,13 @@ import { TeleprompterModal } from "../ui/TeleprompterModal";
 import {
   Upload,
   Scissors,
-  Volume2,
   FileText,
   X,
   Sparkles,
   Zap,
   Brain,
   Mic,
-  Eye,
   Heart,
-  Share2,
   Star,
   Target,
 } from "lucide-react";
@@ -33,8 +30,6 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("authToken");
-    console.log("show token");
-    console.log(token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -80,6 +75,7 @@ const VideoEditorApp = () => {
   const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [isExtendingScript, setIsExtendingScript] = useState(false);
   const [showTeleprompter, setShowTeleprompter] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState("english");
   const [mediaLibrary, setMediaLibrary] = useState({
     videos: [],
     audios: [],
@@ -119,62 +115,11 @@ const VideoEditorApp = () => {
     })();
   }, [script, isAuthenticated]);
 
-  // Функция для получения метаданных файла
-  const getFileMetadata = async (file, type) => {
-    const metadata = { duration: 0, width: 0, height: 0 };
-
-    try {
-      if (type === "videos") {
-        const video = document.createElement("video");
-        video.preload = "metadata";
-        video.src = URL.createObjectURL(file);
-
-        await new Promise((resolve) => {
-          video.onloadedmetadata = () => {
-            metadata.duration = video.duration || 0;
-            metadata.width = video.videoWidth || 0;
-            metadata.height = video.videoHeight || 0;
-            URL.revokeObjectURL(video.src);
-            resolve();
-          };
-          video.onerror = () => {
-            URL.revokeObjectURL(video.src);
-            resolve();
-          };
-          setTimeout(resolve, 3000);
-        });
-      } else if (type === "audios") {
-        const audio = document.createElement("audio");
-        audio.preload = "metadata";
-        audio.src = URL.createObjectURL(file);
-
-        await new Promise((resolve) => {
-          audio.onloadedmetadata = () => {
-            metadata.duration = audio.duration || 0;
-            URL.revokeObjectURL(audio.src);
-            resolve();
-          };
-          audio.onerror = () => {
-            URL.revokeObjectURL(audio.src);
-            resolve();
-          };
-          setTimeout(resolve, 3000);
-        });
-      }
-    } catch (e) {
-      console.warn("Не удалось получить метаданные файла:", e);
-    }
-
-    return metadata;
-  };
-
-  // Функция сохранения записи в медиабиблиотеку
   const saveRecordingToLibrary = async (recordingData) => {
     console.log("🔍 Сохраняем запись:", recordingData);
 
     const { blob, type, duration } = recordingData;
 
-    // Создаем правильное расширение файла на основе MIME типа
     let fileExtension = "webm";
     if (blob.type.includes("mp4")) {
       fileExtension = "mp4";
@@ -186,7 +131,6 @@ const VideoEditorApp = () => {
     const fileName = `${type}_запись_${Date.now()}.${fileExtension}`;
 
     try {
-      // Создаем URL с правильными настройками
       const url = URL.createObjectURL(blob);
 
       console.log("📹 Создаем файл:", {
@@ -210,7 +154,7 @@ const VideoEditorApp = () => {
         createdAt: new Date().toISOString(),
         source: "teleprompter",
         url: url,
-        blob: blob, // Сохраняем оригинальный blob
+        blob: blob,
       };
 
       setMediaLibrary((prev) => {
@@ -225,15 +169,13 @@ const VideoEditorApp = () => {
       console.log(`✅ Запись сохранена: ${fileName}`);
       return true;
     } catch (error) {
-  
       console.error("❌ Ошибка сохранения:", error);
       return false;
     }
   };
-  // Функция для демо-аутентификации (в реальном приложении замените на настоящую)
+
   const handleDemoLogin = async () => {
     try {
-      // Для демо создаем временный токен или используем тестовый аккаунт
       const response = await apiClient.post("/api/auth/login", {
         email: "demo@example.com",
         password: "demo123",
@@ -309,9 +251,10 @@ const VideoEditorApp = () => {
       const response = await apiClient.post("/api/script/key-points", {
         topic,
         contentType,
+        language: selectedLanguage,
       });
 
-      const { keyPoints } = response.data.data;
+      const keyPoints = response.data.data;
       const newKeyPoints = keyPoints.points || keyPoints;
 
       if (Array.isArray(newKeyPoints) && newKeyPoints.length > 0) {
@@ -320,14 +263,7 @@ const VideoEditorApp = () => {
         throw new Error("Неверный формат ответа от сервера");
       }
     } catch (error) {
-      console.error("Ошибка при генерации ключевых пунктов:", error);
-
-      setKeyPoints([
-        `Анализ "${topic}"`,
-        "Основные моменты",
-        "Перспективы развития",
-        "Практическое применение",
-      ]);
+      console.error("Generation error:", error);
     } finally {
       setIsGeneratingKeyPoints(false);
     }
@@ -345,7 +281,9 @@ const VideoEditorApp = () => {
         duration,
         keyPoints: validKeyPoints,
         contentType,
+        language: selectedLanguage,
       });
+
       setScript(cleanScript(res.data.data.script));
       setCurrentStep(2);
     } catch (error) {
@@ -368,6 +306,7 @@ const VideoEditorApp = () => {
         script,
         topic,
         contentType,
+        language: selectedLanguage,
       });
 
       setScript(script + "\n\n" + cleanScript(res.data.data.extension));
@@ -399,6 +338,7 @@ const VideoEditorApp = () => {
         selectedText,
         improvementCommand: aiPrompt,
         script,
+        language: selectedLanguage,
       });
 
       const newScript = script.replace(
@@ -429,6 +369,7 @@ const VideoEditorApp = () => {
     }
   };
 
+  // Обновите обработку записи из телепромптера
   const handleTeleprompterRecording = (blob, type) => {
     if (type === "video") {
       const newVideoUrl = URL.createObjectURL(blob);
@@ -447,21 +388,20 @@ const VideoEditorApp = () => {
       setVideoFile(videoFile);
       setVideoUrl(newVideoUrl);
 
-      if (script) {
-        setCurrentStep(3);
-      } else {
-        setCurrentStep(2);
-      }
+      // Переходим на шаг Content Creation
+      setCurrentStep(3);
     } else {
       setRecordedAudio({
         blob: blob,
         type: type,
         url: URL.createObjectURL(blob),
       });
-      setCurrentStep(4);
+      // Переходим на шаг Content Creation
+      setCurrentStep(3);
     }
   };
 
+  // Обновите steps массив
   const steps = [
     {
       num: 1,
@@ -481,11 +421,11 @@ const VideoEditorApp = () => {
     },
     {
       num: 3,
-      title: "AI Voiceover",
+      title: "Content Creation", // Переименовали
       active: currentStep >= 3,
       completed: currentStep > 3,
       icon: Mic,
-      desc: "High-quality voiceover",
+      desc: "Record or generate content",
     },
     {
       num: 4,
@@ -493,16 +433,33 @@ const VideoEditorApp = () => {
       active: currentStep >= 4,
       completed: currentStep > 4,
       icon: Scissors,
-      desc: "Automatic processing",
+      desc: "AI or manual editing",
     },
   ];
-
   const contentTypes = [
-    { id: "lifestyle", name: "Lifestyle", icon: Heart, color: "slate" },
-    { id: "gaming", name: "Gaming", icon: Target, color: "blue" },
-    { id: "tech", name: "Technology", icon: Zap, color: "indigo" },
-    { id: "education", name: "Education", icon: Brain, color: "blue" },
-    { id: "entertainment", name: "Entertainment", icon: Star, color: "slate" },
+    {
+      id: "lifestyle",
+      name: "Lifestyle",
+      icon: Heart,
+      color: "slate",
+      emoji: "💖",
+    },
+    { id: "gaming", name: "Gaming", icon: Target, color: "blue", emoji: "🎮" },
+    { id: "tech", name: "Technology", icon: Zap, color: "indigo", emoji: "⚡" },
+    {
+      id: "education",
+      name: "Education",
+      icon: Brain,
+      color: "blue",
+      emoji: "🧠",
+    },
+    {
+      id: "entertainment",
+      name: "Entertainment",
+      icon: Star,
+      color: "slate",
+      emoji: "⭐",
+    },
   ];
 
   // Модальное окно авторизации
@@ -622,6 +579,8 @@ const VideoEditorApp = () => {
           setIsLeftPanelCollapsed={setIsLeftPanelCollapsed}
           contentType={contentType}
           setContentType={setContentType}
+          setSelectedLanguage={setSelectedLanguage}
+          selectedLanguage={selectedLanguage}
           topic={topic}
           setTopic={setTopic}
           keyPoints={keyPoints}
@@ -667,142 +626,6 @@ const VideoEditorApp = () => {
             mediaLibrary={mediaLibrary}
             setMediaLibrary={setMediaLibrary}
           />
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl mt-5 p-6 border border-slate-200/50 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div
-                  className={`w-5 h-5 rounded-full shadow-lg ${
-                    currentStep === 1
-                      ? "bg-slate-500 shadow-slate-500/50"
-                      : currentStep === 2
-                      ? "bg-blue-500 shadow-blue-500/50"
-                      : currentStep === 3
-                      ? "bg-indigo-500 shadow-indigo-500/50"
-                      : "bg-green-500 shadow-green-500/50"
-                  } animate-pulse`}
-                ></div>
-                <span className="font-semibold text-gray-800 text-lg">
-                  Control panel
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">
-                Step {currentStep} of 4
-              </div>
-            </div>
-            <div className="space-y-4">
-              <p className="text-gray-600 leading-relaxed font-medium">
-                {currentStep === 1
-                  ? "📝 Ready to create a professional script. Enter a topic or use AI to generate key points"
-                  : currentStep === 2
-                  ? "📹 Script created! Now upload your video for further processing"
-                  : currentStep === 3
-                  ? "🎤 Create voiceover: choose AI generation or record your voice manually"
-                  : "🎬 Project ready for final editing and export in high quality"}
-              </p>
-              {/* Action Buttons */}
-              {currentStep === 3 &&
-                script &&
-                videoFile &&
-                !audioUrl &&
-                !recordedAudio && (
-                  <div className="text-center">
-                    <p className="text-gray-600 mb-4">
-                      Go to the left panel to create voiceover
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <Brain
-                          size={20}
-                          className="mx-auto mb-2 text-blue-600"
-                        />
-                        <span className="text-xs font-medium text-blue-700">
-                          AI voiceover
-                        </span>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <Mic
-                          size={20}
-                          className="mx-auto mb-2 text-slate-600"
-                        />
-                        <span className="text-xs font-medium text-slate-700">
-                          Microphone recording
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              {currentStep === 4 && (
-                <div className="space-y-3">
-                  <button className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-slate-600 to-blue-600 hover:from-slate-700 hover:to-blue-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold">
-                    <Scissors className="mr-3" size={18} />
-                    Start editing
-                  </button>
-                  {/* Features */}
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-xl border border-blue-200">
-                      <div className="flex items-center space-x-2">
-                        <Eye size={14} className="text-blue-500" />
-                        <span className="text-xs font-medium text-blue-700">
-                          Smart transitions
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-r from-slate-50 to-gray-50 p-3 rounded-xl border border-slate-200">
-                      <div className="flex items-center space-x-2">
-                        <Share2 size={14} className="text-slate-500" />
-                        <span className="text-xs font-medium text-slate-700">
-                          Auto trimming
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3 rounded-xl border border-indigo-200">
-                      <div className="flex items-center space-x-2">
-                        <Volume2 size={14} className="text-indigo-500" />
-                        <span className="text-xs font-medium text-indigo-700">
-                          Audio enhancement
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-xl border border-purple-200">
-                      <div className="flex items-center space-x-2">
-                        <Star size={14} className="text-purple-500" />
-                        <span className="text-xs font-medium text-purple-700">
-                          HD export
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* Project Stats */}
-              <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-4 rounded-xl border border-slate-200">
-                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-                  <Brain size={16} className="mr-2 text-slate-600" />
-                  Project analysis
-                </h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-xl font-bold text-slate-600">8.5</div>
-                    <div className="text-xs text-gray-600 font-medium">
-                      Quality
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-blue-600">95%</div>
-                    <div className="text-xs text-gray-600 font-medium">
-                      Readiness
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-indigo-600">HD</div>
-                    <div className="text-xs text-gray-600 font-medium">
-                      Export quality
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -900,6 +723,7 @@ const VideoEditorApp = () => {
       )}
 
       <TeleprompterModal
+        setCurrentStep={setCurrentStep}
         isOpen={showTeleprompter}
         onClose={() => setShowTeleprompter(false)}
         script={script}
