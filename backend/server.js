@@ -8,8 +8,17 @@ const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
 const path = require("path");
 const fs = require("fs");
-const { body, validationResult } = require("express-validator");
 require("dotenv").config();
+const { body, validationResult } = require("express-validator");
+const multer = require("multer");
+const sharp = require("sharp");
+const {
+  generateThumbnails,
+  createThumbnailPrompt,
+  analyzeReferenceImage,
+} = require("./services/dalle");
+
+const app = express();
 
 const {
   generateScript,
@@ -20,7 +29,461 @@ const {
 } = require("./services/openai");
 const { generateAudio, getAvailableVoices } = require("./services/elevenlabs");
 
-const app = express();
+const authenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: "Access token required",
+      });
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "fallback_secret_key"
+    );
+    const user = await User.findById(decoded.userId).select("-password");
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        error: "User not found or account deactivated",
+      });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        error: "Token expired",
+      });
+    }
+
+    return res.status(401).json({
+      success: false,
+      error: "Invalid token",
+    });
+  }
+};
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+    files: 3,
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"), false);
+    }
+  },
+});
+
+const thumbnailLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: process.env.NODE_ENV === "development" ? 1000 : 50,
+  message: {
+    success: false,
+    error: "Too many thumbnail generation requests, please wait a minute.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  skip: (req) => {
+    return process.env.NODE_ENV === "development" && req.ip === "::1";
+  },
+});
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "http://localhost:3000",
+      "http://localhost:3001",
+    ];
+
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    console.log("🔄 CORS preflight request:", req.path);
+    return res.status(200).end();
+  }
+  next();
+});
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+app.use("/api", (req, res, next) => {
+  console.log(`📡 ${req.method} ${req.path}`);
+  if (req.path.includes("/thumbnails/")) {
+    console.log("📋 Content-Type:", req.get("Content-Type"));
+    console.log("📦 Body present:", !!req.body);
+    console.log("📦 Body keys:", req.body ? Object.keys(req.body) : "none");
+  }
+  next();
+});
+
+app.options("*", cors(corsOptions));
+
+const trackThumbnailUsage = async (req, res, next) => {
+  try {
+    if (req.method === "OPTIONS") {
+      console.log("🔄 Skipping OPTIONS request in trackThumbnailUsage");
+      return next();
+    }
+
+    if (!req.body) {
+      console.log("⚠️ req.body is undefined in trackThumbnailUsage");
+      return next();
+    }
+
+    const user = await User.findById(req.user._id);
+
+    const limits = {
+      free: { thumbnailsGenerated: 100000000 },
+      pro: { thumbnailsGenerated: 500000000 },
+      premium: { thumbnailsGenerated: -1 },
+    };
+
+    
+    const userLimits = limits[user.subscription];
+    if (
+      userLimits.thumbnailsGenerated !== -1 &&
+      (user.usage.thumbnailsGenerated || 0) >= userLimits.thumbnailsGenerated
+    ) {
+      return res.status(429).json({
+        success: false,
+        error: `Monthly thumbnail generation limit reached. Upgrade your subscription for more.`,
+        usage: user.usage,
+        limits: userLimits,
+      });
+    }
+
+    req.userLimits = userLimits;
+    next();
+  } catch (error) {
+    console.error("trackThumbnailUsage error:", error);
+    next(error);
+  }
+};
+
+app.post(
+  "/api/thumbnails/clear-rate-limit",
+  authenticateToken,
+  async (req, res) => {
+    if (process.env.NODE_ENV !== "development") {
+      return res.status(403).json({
+        success: false,
+        error: "Only available in development mode",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Rate limit cleared for development",
+    });
+  }
+);
+
+app.post(
+  "/api/thumbnails/generate",
+  authenticateToken,
+  thumbnailLimiter,
+  trackThumbnailUsage,
+  async (req, res) => {
+    try {
+      if (!req.body) {
+        console.error("❌ req.body is undefined");
+        return res.status(400).json({
+          success: false,
+          error:
+            "Request body is missing. Please ensure you're sending JSON data with proper Content-Type header.",
+          debug: {
+            method: req.method,
+            contentType: req.get("Content-Type"),
+            hasBody: !!req.body,
+          },
+        });
+      }
+
+      const {
+        mode,
+        style,
+        text,
+        description,
+        objectCount,
+        referenceImageAnalysis,
+      } = req.body;
+
+      console.log("🎨 Thumbnail generation request:", {
+        mode,
+        style,
+        text,
+        objectCount,
+        hasDescription: !!description,
+        hasReferenceAnalysis: !!referenceImageAnalysis,
+      });
+
+      if (!mode) {
+        return res.status(400).json({
+          success: false,
+          error: "Mode is required (styles or custom)",
+        });
+      }
+
+      if (mode === "styles" && !style) {
+        return res.status(400).json({
+          success: false,
+          error: "Style is required for styles mode",
+        });
+      }
+
+      if (mode === "custom" && !description && !referenceImageAnalysis) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Description or reference image analysis is required for custom mode",
+        });
+      }
+
+      const settings = {
+        style,
+        text,
+        description,
+        objectImages: Array(objectCount || 0).fill(null),
+      };
+
+      if (referenceImageAnalysis && mode === "custom") {
+        settings.description = `${
+          description || ""
+        } Style reference: ${referenceImageAnalysis}`.trim();
+      }
+
+      const prompt = createThumbnailPrompt(settings, mode);
+      console.log("📝 Generated prompt:", prompt.substring(0, 150) + "...");
+
+      const thumbnails = await generateThumbnails(prompt, 5);
+
+      if (thumbnails.length === 0) {
+        return res.status(500).json({
+          success: false,
+          error: "Failed to generate any thumbnails. Please try again.",
+        });
+      }
+
+      await User.findByIdAndUpdate(req.user._id, {
+        $inc: { "usage.thumbnailsGenerated": 1 },
+      });
+
+      console.log(`✅ Successfully generated ${thumbnails.length} thumbnails`);
+
+      res.json({
+        success: true,
+        message: `Generated ${thumbnails.length} thumbnail variants`,
+        data: {
+          thumbnails,
+          prompt: prompt.substring(0, 200) + "...",
+          settings: {
+            mode,
+            style,
+            text,
+            objectCount,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("❌ Thumbnail generation error:", error);
+
+      if (
+        error.message.includes("Rate limit") ||
+        error.message.includes("rate limit")
+      ) {
+        return res.status(429).json({
+          success: false,
+          error:
+            "AI service is currently busy. Please try again in a few minutes.",
+        });
+      }
+
+      if (error.message.includes("Invalid prompt")) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "The description contains inappropriate content or invalid parameters. Please try a different description.",
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to generate thumbnails",
+        debug:
+          process.env.NODE_ENV === "development"
+            ? {
+                stack: error.stack,
+                body: req.body,
+                headers: req.headers,
+              }
+            : undefined,
+      });
+    }
+  }
+);
+
+app.post(
+  "/api/thumbnails/analyze-image",
+  authenticateToken,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: "No image file provided",
+        });
+      }
+
+      const base64Image = req.file.buffer.toString("base64");
+      const imageUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+
+      const analysis = await analyzeReferenceImage(imageUrl);
+
+      res.json({
+        success: true,
+        data: {
+          analysis,
+          imageInfo: {
+            filename: req.file.originalname,
+            size: req.file.size,
+            type: req.file.mimetype,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Image analysis error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to analyze image",
+      });
+    }
+  }
+);
+
+app.get("/api/thumbnails/stats", authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("usage subscription");
+
+    const limits = {
+      free: { thumbnailsGenerated: 10 },
+      pro: { thumbnailsGenerated: 100 },
+      premium: { thumbnailsGenerated: -1 },
+    };
+
+    const userLimits = limits[user.subscription];
+    const used = user.usage.thumbnailsGenerated || 0;
+
+    res.json({
+      success: true,
+      data: {
+        subscription: user.subscription,
+        used: used,
+        limit: userLimits.thumbnailsGenerated,
+        remaining:
+          userLimits.thumbnailsGenerated === -1
+            ? -1
+            : Math.max(0, userLimits.thumbnailsGenerated - used),
+        unlimited: userLimits.thumbnailsGenerated === -1,
+      },
+    });
+  } catch (error) {
+    console.error("Get thumbnail stats error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get thumbnail statistics",
+    });
+  }
+});
+
+app.post(
+  "/api/thumbnails/process-objects",
+  authenticateToken,
+  upload.array("objects", 3),
+  async (req, res) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No object images provided",
+        });
+      }
+
+      console.log(`📷 Processing ${req.files.length} object images...`);
+
+      const processedObjects = [];
+
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+
+        try {
+          const optimizedBuffer = await sharp(file.buffer)
+            .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 85 })
+            .toBuffer();
+
+          const base64 = optimizedBuffer.toString("base64");
+          const dataUrl = `data:image/jpeg;base64,${base64}`;
+
+          processedObjects.push({
+            id: Date.now() + i,
+            originalName: file.originalname,
+            size: optimizedBuffer.length,
+            dataUrl: dataUrl,
+            optimized: true,
+          });
+        } catch (error) {
+          console.error(`Error processing object ${i + 1}:`, error);
+          continue;
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          objects: processedObjects,
+          processed: processedObjects.length,
+          total: req.files.length,
+        },
+      });
+    } catch (error) {
+      console.error("Object processing error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to process object images",
+      });
+    }
+  }
+);
+
 const dirs = ["uploads", "output"];
 dirs.forEach((dir) => {
   if (!fs.existsSync(dir)) {
@@ -41,6 +504,50 @@ app.use(
     crossOriginEmbedderPolicy: false,
   })
 );
+
+app.get("/api/thumbnails/status", authenticateToken, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      message: "Thumbnail API is working",
+      timestamp: new Date().toISOString(),
+      user: {
+        id: req.user._id,
+        email: req.user.email,
+        subscription: req.user.subscription,
+      },
+      services: {
+        dalle: !!process.env.OPENAI_API_KEY,
+        mongodb: mongoose.connection.readyState === 1,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Tubify API is running",
+    timestamp: new Date().toISOString(),
+    services: {
+      database:
+        mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+      openai: !!process.env.OPENAI_API_KEY,
+      elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+      dalle: !!process.env.OPENAI_API_KEY,
+    },
+    middleware: {
+      bodyParser: "configured",
+      cors: "enabled",
+      helmet: "enabled",
+    },
+  });
+});
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -77,34 +584,6 @@ app.use("/api/script/", aiLimiter);
 app.use("/api/audio/", aiLimiter);
 
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || "http://localhost:3000",
-      "http://localhost:3000",
-      "http://localhost:3001",
-    ];
-
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
-
-// Body parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -166,6 +645,7 @@ const userSchema = new mongoose.Schema(
     usage: {
       scriptsGenerated: { type: Number, default: 0 },
       audioGenerated: { type: Number, default: 0 },
+      thumbnailsGenerated: { type: Number, default: 0 }, // НОВОЕ ПОЛЕ
       lastReset: { type: Date, default: Date.now },
     },
     isActive: {
@@ -269,60 +749,28 @@ const projectSchema = new mongoose.Schema(
 
 const Project = mongoose.model("Project", projectSchema);
 
-// Authentication middleware
-const authenticateToken = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: "Access token required",
-      });
-    }
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "fallback_secret_key"
-    );
-    const user = await User.findById(decoded.userId).select("-password");
-
-    if (!user || !user.isActive) {
-      return res.status(401).json({
-        success: false,
-        error: "User not found or account deactivated",
-      });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        error: "Token expired",
-      });
-    }
-
-    return res.status(401).json({
-      success: false,
-      error: "Invalid token",
-    });
-  }
-};
-
 // Usage tracking middleware
 const trackUsage = (type) => {
   return async (req, res, next) => {
     try {
       const user = await User.findById(req.user._id);
 
-      // Check usage limits based on subscription
       const limits = {
-        free: { scriptsGenerated: 5, audioGenerated: 3 },
-        pro: { scriptsGenerated: 50, audioGenerated: 30 },
-        premium: { scriptsGenerated: -1, audioGenerated: -1 }, // unlimited
+        free: {
+          scriptsGenerated: 5,
+          audioGenerated: 3,
+          thumbnailsGenerated: 10, // НОВЫЙ ЛИМИТ
+        },
+        pro: {
+          scriptsGenerated: 50,
+          audioGenerated: 30,
+          thumbnailsGenerated: 100, // НОВЫЙ ЛИМИТ
+        },
+        premium: {
+          scriptsGenerated: -1,
+          audioGenerated: -1,
+          thumbnailsGenerated: -1, // НОВЫЙ ЛИМИТ (unlimited)
+        },
       };
 
       const userLimits = limits[user.subscription];
@@ -408,6 +856,7 @@ app.get("/health", (req, res) => {
         mongoose.connection.readyState === 1 ? "connected" : "disconnected",
       openai: !!process.env.OPENAI_API_KEY,
       elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+      dalle: !!process.env.OPENAI_API_KEY, // НОВЫЙ СЕРВИС
     },
   });
 });
