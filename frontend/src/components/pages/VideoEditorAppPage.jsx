@@ -6,14 +6,10 @@ import { cleanScript } from "../helpers/cleanScript";
 import { TeleprompterModal } from "../ui/TeleprompterModal";
 
 import {
-  Upload,
-  Scissors,
-  FileText,
   X,
   Sparkles,
   Zap,
   Brain,
-  Mic,
   Heart,
   Star,
   Target,
@@ -192,7 +188,6 @@ const VideoEditorApp = () => {
         setAuthError("");
       }
     } catch (error) {
-      // Если демо аккаунт не существует, создаем его
       try {
         await apiClient.post("/api/auth/register", {
           name: "Demo User",
@@ -359,7 +354,6 @@ const VideoEditorApp = () => {
     if (!isAuthenticated) return;
 
     try {
-      // Здесь можно добавить реальную генерацию аудио
       setTimeout(() => {
         setAudioUrl("generated");
         setCurrentStep(4);
@@ -369,7 +363,6 @@ const VideoEditorApp = () => {
     }
   };
 
-  // Обновите обработку записи из телепромптера
   const handleTeleprompterRecording = (blob, type) => {
     if (type === "video") {
       const newVideoUrl = URL.createObjectURL(blob);
@@ -387,8 +380,6 @@ const VideoEditorApp = () => {
 
       setVideoFile(videoFile);
       setVideoUrl(newVideoUrl);
-
-      // Переходим на шаг Content Creation
       setCurrentStep(3);
     } else {
       setRecordedAudio({
@@ -396,46 +387,10 @@ const VideoEditorApp = () => {
         type: type,
         url: URL.createObjectURL(blob),
       });
-      // Переходим на шаг Content Creation
       setCurrentStep(3);
     }
   };
 
-  // Обновите steps массив
-  const steps = [
-    {
-      num: 1,
-      title: "Create Script",
-      active: currentStep >= 1,
-      completed: currentStep > 1,
-      icon: FileText,
-      desc: "AI will create professional content",
-    },
-    {
-      num: 2,
-      title: "Upload Video",
-      active: currentStep >= 2,
-      completed: currentStep > 2,
-      icon: Upload,
-      desc: "Add your footage",
-    },
-    {
-      num: 3,
-      title: "Content Creation", // Переименовали
-      active: currentStep >= 3,
-      completed: currentStep > 3,
-      icon: Mic,
-      desc: "Record or generate content",
-    },
-    {
-      num: 4,
-      title: "Editing",
-      active: currentStep >= 4,
-      completed: currentStep > 4,
-      icon: Scissors,
-      desc: "AI or manual editing",
-    },
-  ];
   const contentTypes = [
     {
       id: "lifestyle",
@@ -462,7 +417,6 @@ const VideoEditorApp = () => {
     },
   ];
 
-  // Модальное окно авторизации
   if (showAuthModal) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
@@ -513,67 +467,7 @@ const VideoEditorApp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 text-gray-900 flex flex-col">
-      {/* Progress Steps */}
-      <div className="bg-gradient-to-r from-slate-100/80 to-blue-100/80 backdrop-blur-lg border-b border-slate-200/50 px-6 py-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-700 to-blue-700 bg-clip-text text-transparent mb-2">
-              Create professional content
-            </h2>
-            <p className="text-gray-600 font-medium">
-              From idea to finished video in 4 simple steps
-            </p>
-          </div>
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => {
-              const IconComponent = step.icon;
-              return (
-                <div key={step.num} className="flex items-center">
-                  <div className="flex flex-col items-center text-center max-w-xs">
-                    <div
-                      className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-semibold transition-all duration-500 shadow-lg relative overflow-hidden ${
-                        step.completed
-                          ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-500/30"
-                          : step.active
-                          ? "bg-gradient-to-br from-slate-600 to-blue-600 text-white shadow-slate-500/30"
-                          : "bg-white/80 text-gray-400 shadow-gray-200/50"
-                      }`}
-                    >
-                      {step.completed ? (
-                        <div className="text-xl">✓</div>
-                      ) : (
-                        <IconComponent size={18} />
-                      )}
-                    </div>
-                    <span
-                      className={`mt-4 text-lg font-semibold transition-colors duration-300 ${
-                        step.active ? "text-slate-700" : "text-gray-500"
-                      }`}
-                    >
-                      {step.title}
-                    </span>
-                    <span className="text-xs text-gray-500 mt-1 font-medium">
-                      {step.desc}
-                    </span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div
-                      className={`w-32 h-2 mx-8 rounded-full transition-all duration-500 ${
-                        currentStep > step.num
-                          ? "bg-gradient-to-r from-green-500 to-emerald-600"
-                          : "bg-gray-200"
-                      }`}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
       <div className="flex flex-1 relative">
-        {/* Content Studio Component */}
         <ContentStudio
           isLeftPanelCollapsed={isLeftPanelCollapsed}
           setIsLeftPanelCollapsed={setIsLeftPanelCollapsed}
@@ -601,6 +495,7 @@ const VideoEditorApp = () => {
           audioUrl={audioUrl}
           assessment={assessment}
           assessmentLoading={assessmentLoading}
+          currentStep={currentStep} // Now being used
           handleTextSelection={handleTextSelection}
           generateKeyPoints={generateKeyPoints}
           generateScript={generateScript}
@@ -625,6 +520,9 @@ const VideoEditorApp = () => {
           <VideoEditor
             mediaLibrary={mediaLibrary}
             setMediaLibrary={setMediaLibrary}
+            videoFile={videoFile} // Now being used
+            videoUrl={videoUrl}
+            showAudioEditor={showAudioEditor} // Now being used
           />
         </div>
       </div>

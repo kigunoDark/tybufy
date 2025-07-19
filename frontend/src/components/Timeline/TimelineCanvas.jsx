@@ -30,7 +30,12 @@ export const TimelineCanvas = ({
   onTimelineItemDragStart,
   onTimelineItemDragEnd,
   onResizeStart,
+  onVolumeChange,
+  showVolumeControls = true,
+  onOpacityChange,
+  showOpacityControls = true,
 }) => {
+  console.log(timelineItems);
   return (
     <div
       ref={(el) => {
@@ -91,6 +96,12 @@ export const TimelineCanvas = ({
               onDragStart={onTimelineItemDragStart}
               onDragEnd={onTimelineItemDragEnd}
               onResizeStart={onResizeStart}
+              onVolumeChange={onVolumeChange}
+              showVolumeControls={showVolumeControls}
+              onOpacityChange={onOpacityChange} 
+                showOpacityControls={showOpacityControls} 
+              hasAudio={item.type === "audios" || item.type === "videos"}
+              hasOpacity={item.type !== "audios" || item.type !== "videos"} 
             />
           ))}
 

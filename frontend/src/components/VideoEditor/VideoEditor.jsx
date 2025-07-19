@@ -83,16 +83,61 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     setIsPlaying(!isPlaying);
   };
 
+  const handleVolumeChange = useCallback(
+    (itemId, volumeDecimal) => {
+      const clampedVolume = Math.max(0, Math.min(1, volumeDecimal));
+
+      setTimelineItems((items) =>
+        items.map((item) =>
+          item.id === itemId ? { ...item, volume: clampedVolume } : item
+        )
+      );
+
+      const audioElement = audioElementsRef.current.get(itemId);
+      if (audioElement) {
+        const finalVolume = clampedVolume * volume;
+        console.log(
+          `Audio volume: item=${clampedVolume}, master=${volume}, final=${finalVolume}`
+        );
+        audioElement.volume = finalVolume;
+      }
+
+      const item = timelineItems.find((t) => t.id === itemId);
+      if (item && item.trackType === "main" && videoRef.current) {
+        const finalVolume = clampedVolume * volume;
+        console.log(
+          `Video volume: item=${clampedVolume}, master=${volume}, final=${finalVolume}`
+        );
+        videoRef.current.volume = finalVolume;
+      }
+    },
+    [timelineItems, volume]
+  );
+
   const seekTo = (time) => {
     const newTime = Math.max(0, Math.min(videoDuration, time));
     setCurrentTime(newTime);
 
     const content = getCurrentTimelineContent();
     content.audio.forEach((audioItem) => {
-      const audioElement = audioElementsRef.current.get(audioItem.id);
-      if (audioElement) {
-        const relativeTime = newTime - audioItem.startTime;
-        audioElement.currentTime = Math.max(0, relativeTime);
+      const audioElement = createAudioElement(audioItem);
+      const relativeTime = currentTime - audioItem.startTime;
+
+      const itemVolume = audioItem.volume ?? 1;
+      const safeItemVolume = itemVolume > 1 ? itemVolume / 100 : itemVolume;
+
+      audioElement.volume = safeItemVolume * volume;
+      audioElement.muted = isMuted;
+
+      if (isPlaying && relativeTime >= 0) {
+        syncAudioTime(audioItem, relativeTime);
+        if (audioElement.paused) {
+          audioElement.play().catch(console.error);
+        }
+      } else {
+        if (!audioElement.paused) {
+          audioElement.pause();
+        }
       }
     });
   };
@@ -263,6 +308,26 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
       }));
     },
     [getOverlayTransform]
+  );
+
+  const handleOpacityChange = useCallback(
+    (itemId, opacityDecimal) => {
+      console.log("VideoEditor opacity change:", {
+        itemId,
+        opacityDecimal,
+      });
+
+      const clampedOpacity = Math.max(0, Math.min(1, opacityDecimal));
+
+      setTimelineItems((items) =>
+        items.map((item) =>
+          item.id === itemId ? { ...item, opacity: clampedOpacity } : item
+        )
+      );
+
+      updateOverlayTransform(itemId, { opacity: clampedOpacity });
+    },
+    [timelineItems, updateOverlayTransform]
   );
 
   const handleOverlayMouseDown = useCallback((e, overlay) => {
@@ -507,8 +572,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
       if (!mediaItem || !mediaItem.name || !mediaItem.type) {
         return;
       }
-      console.log(targetTrackId);
-
       let trackId, trackType;
 
       if (mediaItem.type === "videos" || mediaItem.type === "video") {
@@ -532,19 +595,15 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
           .filter((item) => item.trackId === trackId)
           .sort((a, b) => a.startTime - b.startTime);
 
-        // Вычисляем позицию для нового элемента
         let newStartTime;
         if (startTime !== null) {
           newStartTime = startTime;
         } else if (trackItems.length === 0) {
           newStartTime = 0;
         } else {
-          // Размещаем сразу после последнего элемента
           const lastItem = trackItems[trackItems.length - 1];
           newStartTime = lastItem.startTime + lastItem.duration;
         }
-
-        // Создаем новый элемент
         const newTimelineItem = {
           id: Date.now() + Math.random(),
           mediaId: mediaItem.id,
@@ -1128,6 +1187,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
         </div>
 
         <Timeline
+          handleVolumeChange={handleVolumeChange}
           timelineItems={timelineItems}
           setTimelineItems={setTimelineItems}
           setShowExportModal={openExportModal}
@@ -1161,6 +1221,8 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
           insertWithRipple={insertWithRipple}
           applyRippleEffect={applyRippleEffect}
           removeFromTimeline={removeFromTimeline}
+          onVolumeChange={handleVolumeChange}
+          onOpacityChange={handleOpacityChange}
           onSmartAddToTimeline={(func) => {
             setSmartAddFunction(() => func);
           }}
@@ -1173,6 +1235,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
         timelineItems={timelineItems}
         tracks={tracks}
         videoDuration={videoDuration}
+        overlayTransforms={overlayTransforms} // ✅ ДОБАВЬТЕ ЭТУ СТРОКУ
       />
     </div>
   );

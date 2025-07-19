@@ -34,9 +34,10 @@ export const Timeline = ({
   pasteTimelineItem,
   deleteSelectedItem,
   addToTimeline,
+  handleVolumeChange,
   insertWithRipple,
+  onOpacityChange,
   applyRippleEffect,
-  removeFromTimeline,
   onSmartAddToTimeline,
 }) => {
   const timelineRef = useRef(null);
@@ -702,6 +703,8 @@ export const Timeline = ({
           timelineRef={timelineRef}
           timelineScrollRef={timelineScrollRef}
           tracks={tracks}
+          onVolumeChange={handleVolumeChange}
+          showVolumeControls={true}
           timelineItems={timelineItems}
           selectedTimelineItem={selectedTimelineItem}
           draggedTimelineItem={draggedTimelineItem}
@@ -720,6 +723,8 @@ export const Timeline = ({
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onDragLeave={handleDragLeave}
+          showOpacityControls={true}
+          onOpacityChange={onOpacityChange}
           onClick={handleTimelineClick}
           onDoubleClick={handleTimelineDoubleClick}
           onTimelineItemSelect={setSelectedTimelineItem}

@@ -1,44 +1,53 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, Download, Check, AlertCircle, Settings, Play, Film } from "lucide-react";
+import {
+  X,
+  Download,
+  Check,
+  AlertCircle,
+  Settings,
+  Play,
+  Film,
+} from "lucide-react";
+import ThumbnailQuestionModal from "../ThumbnailCreator/ThumbnailQuestionModal";
+import ThumbnailCreator from "../ThumbnailCreator/ThumbnailCreator";
 
 const FFmpegVideoExporter = ({
   isOpen,
   onClose,
   timelineItems = [],
   videoDuration = 60,
+  overlayTransforms = {},
   timelineData,
   elements,
   clips,
   mediaItems,
 }) => {
+  // Поддержка разных способов передачи данных
   const actualTimelineItems = React.useMemo(() => {
     const items = timelineItems || timelineData || elements || clips || mediaItems || [];
-    
-    console.log('🔄 Получили данные timeline:', {
+
+    console.log("🔄 Получили данные timeline:", {
       timelineItems: timelineItems?.length || 0,
       timelineData: timelineData?.length || 0,
       elements: elements?.length || 0,
       clips: clips?.length || 0,
       mediaItems: mediaItems?.length || 0,
-      finalItems: items?.length || 0
+      finalItems: items?.length || 0,
     });
-    
+
     if (items?.length > 0) {
-      console.log('📋 Первый элемент timeline:', items[0]);
+      console.log("📋 Первый элемент timeline:", items[0]);
     }
-    
+
     return items;
   }, [timelineItems, timelineData, elements, clips, mediaItems]);
 
   const [exportSettings, setExportSettings] = useState({
     resolution: "1280x720",
-    fps: 24, 
-    bitrate: 2000,
+    fps: 24,
     format: "mp4",
-    quality: "medium",
     filename: `video_${Date.now()}`,
-    compatibilityMode: "standard",
-    audioQuality: "standard"
+    includeAudio: true,
   });
 
   const [ffmpeg, setFfmpeg] = useState(null);
@@ -48,28 +57,57 @@ const FFmpegVideoExporter = ({
   const [exportStage, setExportStage] = useState("idle");
   const [previewFrame, setPreviewFrame] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const canvasRef = useRef(null);
   const previewCanvasRef = useRef(null);
+  const mediaCache = useRef(new Map());
 
-  // Автоматический расчет длительности на основе timeline
-  const calculateTotalDuration = () => {
-    if (actualTimelineItems.length === 0) return videoDuration;
-    
-    const maxEndTime = Math.max(...actualTimelineItems.map(item => 
-      (item.startTime || 0) + (item.duration || 0)
-    ));
-    
-    const calculatedDuration = Math.max(maxEndTime, videoDuration);
-    console.log(`⏱️ Рассчитанная длительность: ${calculatedDuration.toFixed(2)}s`);
-    return calculatedDuration;
+  // ✅ Состояния для управления thumbnail модалками
+  const [showThumbnailQuestion, setShowThumbnailQuestion] = useState(false);
+  const [showThumbnailCreator, setShowThumbnailCreator] = useState(false);
+
+  const navigateToApp = () => {
+    window.location.href = "http://localhost:3000/app";
   };
 
-  const getPreviewDimensions = () => {
-    return {
-      width: 1920,
-      height: 1080,
-    };
+  const handleThumbnailResponse = (wantThumbnail) => {
+    setShowThumbnailQuestion(false);
+
+    if (wantThumbnail) {
+      setShowThumbnailCreator(true);
+    } else {
+      onClose();
+      navigateToApp();
+    }
+  };
+
+  const handleThumbnailCreatorClose = () => {
+    setShowThumbnailCreator(false);
+    onClose();
+    navigateToApp();
+  };
+
+  // Расчет длительности ИСПРАВЛЕННЫЙ
+  const calculateTotalDuration = () => {
+    if (actualTimelineItems.length === 0) return videoDuration;
+
+    // Находим максимальное время окончания ТОЛЬКО для видео/изображений
+    const visualItems = actualTimelineItems.filter(item => 
+      item.trackType === "main" || item.trackType === "overlay"
+    );
+
+    if (visualItems.length === 0) return videoDuration;
+
+    const maxEndTime = Math.max(
+      ...visualItems.map(
+        (item) => (item.startTime || 0) + (item.duration || 0)
+      )
+    );
+
+    // ✅ ОГРАНИЧИВАЕМ максимум 30 секундами
+    const calculatedDuration = Math.min(maxEndTime, 30);
+    console.log(`⏱️ ИСПРАВЛЕННАЯ длительность: ${calculatedDuration.toFixed(2)}s (макс визуальный контент)`);
+    return calculatedDuration;
   };
 
   // Инициализация FFmpeg
@@ -80,24 +118,24 @@ const FFmpegVideoExporter = ({
       setIsLoading(true);
       setExportStage("loading");
       setError(null);
-      
+
       try {
-        console.log('🔄 Инициализация FFmpeg...');
-        
-        const ffmpegModule = await import('@ffmpeg/ffmpeg');
-        const utilModule = await import('@ffmpeg/util');
-        
+        console.log("🔄 Инициализация FFmpeg...");
+
+        const ffmpegModule = await import("@ffmpeg/ffmpeg");
+        const utilModule = await import("@ffmpeg/util");
+
         const FFmpegClass = ffmpegModule.FFmpeg;
         const fetchFile = utilModule.fetchFile;
-        
+
         const ffmpegInstance = new FFmpegClass();
-        
+
         await ffmpegInstance.load({
-          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+          coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js",
+          wasmURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm",
         });
 
-        ffmpegInstance.on('progress', ({ progress }) => {
+        ffmpegInstance.on("progress", ({ progress }) => {
           if (isExporting) {
             const adjustedProgress = 70 + Math.round(progress * 25);
             setExportProgress(Math.min(adjustedProgress, 95));
@@ -107,10 +145,9 @@ const FFmpegVideoExporter = ({
         window.fetchFile = fetchFile;
         setFfmpeg(ffmpegInstance);
         setExportStage("ready");
-        console.log('✅ FFmpeg готов');
-        
+        console.log("✅ FFmpeg готов");
       } catch (error) {
-        console.error('❌ Ошибка FFmpeg:', error);
+        console.error("❌ Ошибка FFmpeg:", error);
         setError(error.message);
         setExportStage("error");
       } finally {
@@ -123,56 +160,136 @@ const FFmpegVideoExporter = ({
     }
   }, [isOpen]);
 
-  const getActiveItemsAtTime = (currentTime) => {
-    console.log(`🔍 Проверяем активные элементы на времени ${currentTime.toFixed(1)}s`);
-    
-    const activeItems = actualTimelineItems.filter(item => {
+  // Загрузка медиа элементов
+  const loadMediaElement = async (item) => {
+    console.log(`📦 Загружаем элемент: "${item.name}"`);
+    console.log(`🔍 Тип элемента: ${item.type}, trackType: ${item.trackType}`);
+
+    if (!item.url) {
+      console.error(`❌ URL отсутствует для ${item.name}`);
+      return null;
+    }
+
+    const cacheKey = `${item.id}_${item.url}`;
+    if (mediaCache.current.has(cacheKey)) {
+      return mediaCache.current.get(cacheKey);
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Timeout loading ${item.name}`));
+      }, 10000);
+
+      const isVideo = item.type === "videos" || item.trackType === "main" ||
+        item.name?.toLowerCase().includes(".mp4") ||
+        item.name?.toLowerCase().includes(".webm") ||
+        item.name?.toLowerCase().includes(".mov");
+
+      const isImage = item.type === "images" || 
+        (item.type !== "videos" && item.trackType !== "audio" && !isVideo);
+
+      console.log(`🎯 Определен тип: ${isVideo ? "ВИДЕО" : isImage ? "ИЗОБРАЖЕНИЕ" : "НЕИЗВЕСТНО"} для ${item.name}`);
+
+      if (isVideo) {
+        const video = document.createElement("video");
+        if (!item.url.startsWith("blob:")) {
+          video.crossOrigin = "anonymous";
+        }
+        video.muted = true;
+        video.preload = "metadata";
+
+        video.onloadedmetadata = () => {
+          console.log(`✅ Видео загружено: ${item.name}, размер: ${video.videoWidth}x${video.videoHeight}`);
+          clearTimeout(timeout);
+          mediaCache.current.set(cacheKey, video);
+          resolve(video);
+        };
+
+        video.onerror = (e) => {
+          console.error(`❌ Ошибка загрузки видео ${item.name}:`, e);
+          clearTimeout(timeout);
+          reject(new Error(`Failed to load video: ${item.name}`));
+        };
+
+        video.src = item.url;
+        video.load();
+      } else {
+        const img = new Image();
+        if (!item.url.startsWith("blob:")) {
+          img.crossOrigin = "anonymous";
+        }
+
+        img.onload = () => {
+          console.log(`✅ Изображение загружено: ${item.name}, размер: ${img.naturalWidth}x${img.naturalHeight}`);
+          clearTimeout(timeout);
+          mediaCache.current.set(cacheKey, img);
+          resolve(img);
+        };
+
+        img.onerror = (e) => {
+          console.error(`❌ Ошибка загрузки изображения ${item.name}:`, e);
+          clearTimeout(timeout);
+          reject(new Error(`Failed to load image: ${item.name}`));
+        };
+
+        img.src = item.url;
+      }
+    });
+  };
+
+  // Рендеринг кадра С МЕНЬШИМИ ЛОГАМИ
+  const renderFrameAtTime = async (ctx, currentTime, width, height) => {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, width, height);
+
+    // Показываем логи только каждые 5 секунд
+    if (currentTime % 5 < 0.1) {
+      console.log(`🎬 Рендерим кадр на времени ${currentTime.toFixed(1)}s...`);
+    }
+
+    // Активные элементы с ДИАГНОСТИКОЙ
+    const activeItems = actualTimelineItems.filter((item) => {
       const startTime = item.startTime || 0;
       const duration = item.duration || 0;
       const endTime = startTime + duration;
       const isActive = currentTime >= startTime && currentTime <= endTime;
-      
-      console.log(`   📺 "${item.name}": ${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s → ${isActive ? '✅ АКТИВЕН' : '❌ неактивен'}`);
+
+      // Показываем только важные кадры (каждые 5 секунд)
+      if (currentTime % 5 < 0.1) {
+        console.log(`   📺 "${item.name}": ${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s → ${isActive ? "✅ АКТИВЕН" : "❌ неактивен"}`);
+      }
       return isActive;
     });
 
-    console.log(`📋 Найдено активных элементов: ${activeItems.length}/${actualTimelineItems.length}`);
-    return activeItems;
-  };
-
-  const renderFrameAtTime = async (ctx, currentTime, width, height) => {
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
-
-    console.log(`🎬 Рендерим кадр на времени ${currentTime.toFixed(1)}s...`);
-
-    const activeItems = getActiveItemsAtTime(currentTime);
+    // Показываем только важные кадры
+    if (currentTime % 5 < 0.1) {
+      console.log(`📋 Найдено активных элементов: ${activeItems.length}/${actualTimelineItems.length}`);
+    }
 
     if (activeItems.length === 0) {
-      ctx.fillStyle = '#333333';
+      ctx.fillStyle = "#333333";
       ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = "#ffffff";
       ctx.font = `${Math.min(48, width / 20)}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(`Время: ${currentTime.toFixed(1)}s`, width / 2, height / 2 - 30);
       ctx.fillText(`Нет активных элементов`, width / 2, height / 2 + 30);
       return;
     }
 
+    // Сортировка: main сначала, overlay потом
     const sortedItems = activeItems.sort((a, b) => {
       const layerOrder = { main: 1, overlay: 2, audio: 0 };
       return (layerOrder[a.trackType] || 1) - (layerOrder[b.trackType] || 1);
     });
 
-    for (let i = 0; i < sortedItems.length; i++) {
-      const item = sortedItems[i];
-      
-      if (item.trackType === 'audio') continue;
+    for (const item of sortedItems) {
+      if (item.trackType === "audio") continue;
 
       try {
         const element = await loadMediaElement(item);
-        
+
         if (element) {
           const relativeTime = currentTime - (item.startTime || 0);
           await drawElementOnCanvas(ctx, element, item, relativeTime, width, height);
@@ -183,101 +300,20 @@ const FFmpegVideoExporter = ({
     }
   };
 
-  const loadMediaElement = async (item) => {
-    console.log(`📦 Загружаем элемент: "${item.name}"`);
-    console.log(`🔍 Тип элемента: ${item.type}, trackType: ${item.trackType}`);
-    
-    if (!item.url) {
-      console.error(`❌ URL отсутствует для ${item.name}`);
-      return null;
-    }
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error(`Timeout loading ${item.name}`));
-      }, 10000);
-
-      const isVideo = item.type === 'videos' || 
-                     item.trackType === 'main' || 
-                     item.name?.toLowerCase().includes('.mp4') ||
-                     item.name?.toLowerCase().includes('.webm') ||
-                     item.name?.toLowerCase().includes('.mov');
-      
-      const isImage = item.type === 'images' || 
-                     item.type !== 'videos' && 
-                     item.trackType !== 'audio' &&
-                     !isVideo;
-
-      console.log(`🎯 Определен тип: ${isVideo ? 'ВИДЕО' : isImage ? 'ИЗОБРАЖЕНИЕ' : 'НЕИЗВЕСТНО'} для ${item.name}`);
-
-      if (isVideo) {
-        const video = document.createElement('video');
-        if (!item.url.startsWith('blob:')) {
-          video.crossOrigin = 'anonymous';
-        }
-        video.muted = true;
-        video.preload = 'metadata';
-        
-        video.onloadedmetadata = () => {
-          console.log(`✅ Видео загружено: ${item.name}, размер: ${video.videoWidth}x${video.videoHeight}`);
-          clearTimeout(timeout);
-          resolve(video);
-        };
-        
-        video.onerror = (e) => {
-          console.error(`❌ Ошибка загрузки видео ${item.name}:`, e);
-          clearTimeout(timeout);
-          reject(new Error(`Failed to load video: ${item.name}`));
-        };
-        
-        video.src = item.url;
-        video.load();
-        
-      } else {
-        const img = new Image();
-        if (!item.url.startsWith('blob:')) {
-          img.crossOrigin = 'anonymous';
-        }
-        
-        img.onload = () => {
-          console.log(`✅ Изображение загружено: ${item.name}, размер: ${img.naturalWidth}x${img.naturalHeight}`);
-          
-          // Проверяем формат изображения
-          const canvas = document.createElement('canvas');
-          canvas.width = 1;
-          canvas.height = 1;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, 1, 1);
-          const imageData = ctx.getImageData(0, 0, 1, 1);
-          const hasAlpha = imageData.data[3] < 255;
-          
-          console.log(`🔍 Изображение ${item.name} имеет альфа-канал: ${hasAlpha}`);
-          
-          clearTimeout(timeout);
-          resolve(img);
-        };
-        
-        img.onerror = (e) => {
-          console.error(`❌ Ошибка загрузки изображения ${item.name}:`, e);
-          clearTimeout(timeout);
-          reject(new Error(`Failed to load image: ${item.name}`));
-        };
-        
-        img.src = item.url;
-      }
-    });
-  };
-
+  // Отрисовка элемента на canvas
   const drawElementOnCanvas = async (ctx, element, item, relativeTime, canvasWidth, canvasHeight) => {
     try {
-      if (element.tagName === 'VIDEO') {
+      if (element.tagName === "VIDEO") {
         const trimStart = item.trimStart || 0;
-        const maxTime = Math.min(element.duration || item.duration || 0, item.duration || element.duration || 0);
+        const maxTime = Math.min(
+          element.duration || item.duration || 0,
+          item.duration || element.duration || 0
+        );
         const targetTime = Math.max(0, Math.min(trimStart + relativeTime, maxTime));
-        
+
         if (Math.abs(element.currentTime - targetTime) > 0.1) {
           element.currentTime = targetTime;
-          await new Promise(resolve => {
+          await new Promise((resolve) => {
             const checkReady = () => {
               if (element.readyState >= 2) {
                 resolve();
@@ -298,7 +334,8 @@ const FFmpegVideoExporter = ({
 
       let drawWidth, drawHeight, drawX, drawY;
 
-      if (item.trackType === 'main') {
+      if (item.trackType === "main") {
+        // Основное видео - пропорциональное масштабирование
         const canvasRatio = canvasWidth / canvasHeight;
         const elementRatio = elementWidth / elementHeight;
 
@@ -313,26 +350,43 @@ const FFmpegVideoExporter = ({
           drawX = (canvasWidth - drawWidth) / 2;
           drawY = 0;
         }
-      } else if (item.trackType === 'overlay') {
-        const uiX = item.x || 0;
-        const uiY = item.y || 0;
-        const uiWidth = item.width || 200;
-        const uiHeight = item.height || 150;
-        const uiScale = item.scale || 1;
+      } else if (item.trackType === "overlay") {
+        // Overlay с координатами + ДИАГНОСТИКА
+        console.log(`🖼️ РЕНДЕРИМ OVERLAY: ${item.name}`);
+        console.log(`   ID элемента: ${item.id}`);
+        console.log(`   overlayTransforms[${item.id}]:`, overlayTransforms[item.id]);
         
-        const previewDims = getPreviewDimensions();
-        const scaleX = canvasWidth / previewDims.width;
-        const scaleY = canvasHeight / previewDims.height;
+        const overlayCoords = overlayTransforms[item.id];
         
-        drawX = uiX * scaleX;
-        drawY = uiY * scaleY;
-        drawWidth = uiWidth * scaleX * uiScale;
-        drawHeight = uiHeight * scaleY * uiScale;
+        if (overlayCoords) {
+          // Используем координаты из VideoEditor
+          const baseX = 200 + (overlayCoords.x || 0);
+          const baseY = 50 + (overlayCoords.y || 0);
+          const scale = overlayCoords.scale || 1;
+          
+          const scaleX = canvasWidth / 1920;
+          const scaleY = canvasHeight / 1080;
+          
+          drawX = baseX * scaleX;
+          drawY = baseY * scaleY;
+          drawWidth = 256 * scale * scaleX;
+          drawHeight = 192 * scale * scaleY;
+          
+          console.log(`   ✅ OVERLAY с координатами: pos(${drawX.toFixed(0)}, ${drawY.toFixed(0)}) size(${drawWidth.toFixed(0)}x${drawHeight.toFixed(0)})`);
+        } else {
+          // ✅ ПРИНУДИТЕЛЬНЫЕ большие координаты для теста
+          drawX = canvasWidth * 0.6;   // Справа
+          drawY = canvasHeight * 0.1;  // Сверху  
+          drawWidth = canvasWidth * 0.3;   // 30% экрана
+          drawHeight = canvasHeight * 0.3; // 30% экрана
+          
+          console.log(`   🆘 OVERLAY БЕЗ координат - ПРИНУДИТЕЛЬНО БОЛЬШОЙ: pos(${drawX.toFixed(0)}, ${drawY.toFixed(0)}) size(${drawWidth.toFixed(0)}x${drawHeight.toFixed(0)})`);
+        }
       }
 
-      // ИСПРАВЛЕНИЕ: Сохраняем состояние контекста перед изменениями
       ctx.save();
 
+      // Поворот
       if (item.rotation && item.rotation !== 0) {
         const centerX = drawX + drawWidth / 2;
         const centerY = drawY + drawHeight / 2;
@@ -341,245 +395,177 @@ const FFmpegVideoExporter = ({
         ctx.translate(-centerX, -centerY);
       }
 
+      // Прозрачность
       const opacity = item.opacity !== undefined ? item.opacity : 1;
       ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
 
-      // ИСПРАВЛЕНИЕ: Настройки для правильного рендеринга изображений
-      if (element.tagName === 'IMG') {
-        // Для изображений используем настройки сглаживания
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        
-        // Проверяем, есть ли у изображения альфа-канал
-        if (item.type === 'images' || element.src.includes('.png')) {
+      // Качество
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Обработка изображений с альфа-каналом
+      if (element.tagName === "IMG") {
+        if (item.type === "images" || element.src.includes(".png")) {
           console.log(`🖼️ Рендерим изображение с возможным альфа-каналом: ${item.name}`);
-          
-          // Создаем временный canvas для предварительной обработки изображения
-          const tempCanvas = document.createElement('canvas');
+
+          const tempCanvas = document.createElement("canvas");
           tempCanvas.width = elementWidth;
           tempCanvas.height = elementHeight;
-          const tempCtx = tempCanvas.getContext('2d', { alpha: false });
-          
-          // Заполняем черным фоном для удаления альфа-канала
-          tempCtx.fillStyle = '#000000';
+          const tempCtx = tempCanvas.getContext("2d", { alpha: false });
+
+          tempCtx.fillStyle = "#000000";
           tempCtx.fillRect(0, 0, elementWidth, elementHeight);
-          
-          // Рисуем изображение поверх черного фона
           tempCtx.drawImage(element, 0, 0);
-          
-          // Теперь рисуем обработанное изображение на основной canvas
+
           ctx.drawImage(tempCanvas, drawX, drawY, drawWidth, drawHeight);
         } else {
-          // Обычные изображения без альфа-канала
           ctx.drawImage(element, drawX, drawY, drawWidth, drawHeight);
         }
       } else {
-        // Видео элементы
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'medium';
         ctx.drawImage(element, drawX, drawY, drawWidth, drawHeight);
       }
-      
-      // ИСПРАВЛЕНИЕ: Всегда восстанавливаем состояние контекста
+
       ctx.restore();
-      
     } catch (error) {
       console.error(`❌ Ошибка отрисовки ${item.name}:`, error);
       throw error;
     }
   };
 
-  useEffect(() => {
-    if (isOpen && actualTimelineItems.length > 0 && exportStage === "ready") {
-      generatePreviewFrame();
-    }
-  }, [isOpen, actualTimelineItems, exportSettings.resolution, exportStage]);
-
+  // Создание превью
   const generatePreviewFrame = async () => {
     try {
       const canvas = previewCanvasRef.current;
       if (!canvas) return;
 
-      // ИСПРАВЛЕНИЕ: Используем контекст без альфа-канала для превью
-      const ctx = canvas.getContext('2d', { 
-        alpha: false,
-        colorSpace: 'srgb',
-        willReadFrequently: false
-      });
-      
-      const [width, height] = exportSettings.resolution.split('x').map(Number);
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const [width, height] = exportSettings.resolution.split("x").map(Number);
       canvas.width = width;
       canvas.height = height;
 
-      // Принудительно заполняем черным фоном
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, width, height);
 
-      const firstItem = actualTimelineItems.find(item => item.trackType === 'main');
+      const firstItem = actualTimelineItems.find((item) => item.trackType === "main");
       let previewTime = 0;
-      
+
       if (firstItem) {
         const itemStart = firstItem.startTime || 0;
         const itemDuration = firstItem.duration || 0;
-        previewTime = itemStart + (itemDuration / 2);
+        previewTime = itemStart + itemDuration / 2;
       } else {
         const totalDuration = calculateTotalDuration();
         previewTime = totalDuration / 2;
       }
-      
-      console.log(`🖼️ Генерируем превью с поддержкой изображений на времени ${previewTime.toFixed(1)}s`);
-      
+
+      console.log(`🖼️ Генерируем превью на времени ${previewTime.toFixed(1)}s`);
+
       await renderFrameAtTime(ctx, previewTime, width, height);
-      
+
       canvas.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
           setPreviewFrame(url);
           console.log(`✅ Превью создано: ${blob.type}, размер: ${(blob.size / 1024).toFixed(1)}KB`);
         }
-      }, 'image/png'); // Используем PNG для превью с изображениями
+      }, "image/png");
     } catch (error) {
-      console.warn('⚠️ Ошибка создания превью:', error);
+      console.warn("⚠️ Ошибка создания превью:", error);
     }
   };
 
-  // ИСПРАВЛЕННЫЙ экспорт с выбором режима совместимости
-  const startExport = async () => {
-    if (!ffmpeg || isExporting || actualTimelineItems.length === 0) return;
-
-    setIsExporting(true);
-    setExportProgress(0);
-    setExportStage("preparing");
-    setError(null);
-
-    try {
-      console.log(`🎬 Начинаем экспорт в режиме: ${exportSettings.compatibilityMode}`);
-      
-      const totalDuration = calculateTotalDuration();
-      const maxDuration = Math.min(totalDuration, 120);
-      const actualDuration = maxDuration;
-
-      setExportStage("loading_media");
-      const mediaElements = await prepareMediaElements();
-      setExportProgress(15);
-
-      setExportStage("rendering_frames");
-      const frames = await renderAllFrames(mediaElements, actualDuration);
-      setExportProgress(50);
-
-      setExportStage("processing_audio");
-      const audioFiles = await prepareAudioFiles();
-      setExportProgress(60);
-
-      setExportStage("encoding");
-      
-      // Выбираем метод кодирования в зависимости от режима совместимости
-      let videoBlob;
-      switch (exportSettings.compatibilityMode) {
-        case "baseline":
-          videoBlob = await encodeWithFFmpegBaseline(frames, audioFiles, actualDuration);
-          break;
-        case "maximum":
-          videoBlob = await encodeWithFFmpegMaxCompatibility(frames, audioFiles, actualDuration);
-          break;
-        default:
-          videoBlob = await encodeWithFFmpeg(frames, audioFiles, actualDuration);
-      }
-      
-      setExportProgress(95);
-
-      setExportStage("downloading");
-      await downloadVideo(videoBlob);
-      setExportProgress(100);
-
-      setExportStage("completed");
-      setTimeout(() => {
-        setExportStage("ready");
-        setExportProgress(0);
-      }, 3000);
-
-    } catch (error) {
-      console.error('❌ Ошибка экспорта:', error);
-      setError(error.message);
-      setExportStage("error");
-    } finally {
-      setIsExporting(false);
+  // Эффект для создания превью
+  useEffect(() => {
+    if (isOpen && actualTimelineItems.length > 0 && exportStage === "ready") {
+      generatePreviewFrame();
     }
-  };
+  }, [isOpen, actualTimelineItems, exportSettings.resolution, exportStage]);
 
-  const prepareMediaElements = async () => {
-    const elements = new Map();
-    const videoElements = actualTimelineItems.filter(item => item.trackType !== 'audio');
-    
-    for (const item of videoElements) {
+  // Подготовка аудио
+  const prepareAudioFiles = async () => {
+    if (!exportSettings.includeAudio) return [];
+
+    const audioItems = actualTimelineItems.filter((item) => item.trackType === "audio");
+    const audioFiles = [];
+
+    for (let i = 0; i < Math.min(audioItems.length, 3); i++) {
+      const item = audioItems[i];
       try {
-        const element = await loadMediaElement(item);
-        if (element) {
-          elements.set(item.id, element);
-        }
+        const response = await fetch(item.url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const blob = await response.blob();
+        audioFiles.push({
+          blob,
+          startTime: item.startTime || 0,
+          duration: item.duration || videoDuration,
+          name: item.name,
+          index: i,
+        });
       } catch (error) {
-        console.warn(`⚠️ Не удалось загрузить ${item.name}:`, error);
+        console.warn(`⚠️ Ошибка загрузки аудио ${item.name}:`, error);
       }
     }
 
-    return elements;
+    return audioFiles;
   };
 
-  const renderAllFrames = async (mediaElements, duration) => {
+  // Рендеринг всех кадров
+  const renderAllFrames = async (duration) => {
     const canvas = canvasRef.current;
-    if (!canvas) throw new Error('Canvas не найден');
+    if (!canvas) throw new Error("Canvas не найден");
 
-    // ИСПРАВЛЕНИЕ: Используем 2D контекст с отключенным альфа-каналом
-    const ctx = canvas.getContext('2d', { 
-      alpha: false,  // Отключаем альфа-канал для совместимости
-      colorSpace: 'srgb',  // Стандартное цветовое пространство
-      willReadFrequently: false,
-      desynchronized: false
-    });
-    
-    const [width, height] = exportSettings.resolution.split('x').map(Number);
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const [width, height] = exportSettings.resolution.split("x").map(Number);
     canvas.width = width;
     canvas.height = height;
 
-    console.log(`🎞️ Начинаем рендеринг кадров: ${width}x${height}, контекст без альфа-канала`);
+    console.log(`🎞️ Начинаем рендеринг кадров: ${width}x${height}`);
 
     const totalFrames = Math.ceil(duration * exportSettings.fps);
     const frames = [];
     const maxFrames = Math.min(totalFrames, 1200);
-    
+
     for (let frame = 0; frame < maxFrames; frame++) {
-      const currentTime = (frame / exportSettings.fps);
+      const currentTime = frame / exportSettings.fps;
       if (currentTime >= duration) break;
-      
+
       try {
-        // ИСПРАВЛЕНИЕ: Принудительно заполняем фон черным для удаления альфа-канала
-        ctx.fillStyle = '#000000';
+        ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, width, height);
-        
+
         await renderFrameAtTime(ctx, currentTime, width, height);
 
-        // ИСПРАВЛЕНИЕ: Используем PNG для лучшей совместимости с изображениями
-        const blob = await new Promise(resolve => {
-          // Проверяем есть ли изображения в timeline
-          const hasImages = actualTimelineItems.some(item => 
-            item.type !== 'videos' && item.trackType !== 'audio'
+        const blob = await new Promise((resolve) => {
+          const hasImages = actualTimelineItems.some(
+            (item) => item.type !== "videos" && item.trackType !== "audio"
           );
-          
+
           if (hasImages) {
-            // Для изображений используем PNG без альфа-канала
-            canvas.toBlob(resolve, 'image/png');
+            canvas.toBlob(resolve, "image/png");
           } else {
-            // Для видео используем JPEG
-            canvas.toBlob(resolve, 'image/jpeg', 0.85);
+            canvas.toBlob(resolve, "image/jpeg", 0.85);
           }
         });
-        
+
         if (blob) {
           frames.push(blob);
-          
-          // Логируем первый кадр для диагностики
-          if (frame === 0) {
-            console.log(`🖼️ Первый кадр: ${blob.type}, размер: ${(blob.size / 1024).toFixed(1)}KB`);
+          // ✅ ДИАГНОСТИКА первых кадров
+          if (frame < 5) {
+            // Считаем активные элементы для диагностики
+            const activeItemsForDiag = actualTimelineItems.filter((item) => {
+              const startTime = item.startTime || 0;
+              const duration = item.duration || 0;
+              const endTime = startTime + duration;
+              return currentTime >= startTime && currentTime <= endTime;
+            });
+            
+            console.log(`📸 Кадр ${frame}: время=${currentTime.toFixed(1)}s размер=${(blob.size / 1024).toFixed(1)}KB активных=${activeItemsForDiag.length}`);
+            activeItemsForDiag.forEach(item => {
+              if (item.trackType !== "audio") {
+                console.log(`   - ${item.name} (${item.trackType})`);
+              }
+            });
           }
         }
 
@@ -587,9 +573,8 @@ const FFmpegVideoExporter = ({
         setExportProgress(progress);
 
         if (frame % 100 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 1));
+          await new Promise((resolve) => setTimeout(resolve, 1));
         }
-        
       } catch (error) {
         console.error(`❌ Ошибка рендеринга кадра ${frame}:`, error);
         break;
@@ -600,70 +585,38 @@ const FFmpegVideoExporter = ({
     return frames;
   };
 
-  const prepareAudioFiles = async () => {
-    const audioItems = actualTimelineItems.filter(item => item.trackType === 'audio');
-    const audioFiles = [];
-
-    for (let i = 0; i < Math.min(audioItems.length, 3); i++) {
-      const item = audioItems[i];
-      try {
-        const response = await fetch(item.url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const blob = await response.blob();
-        audioFiles.push({
-          blob,
-          startTime: item.startTime || 0,
-          duration: item.duration || videoDuration,
-          name: item.name,
-          index: i
-        });
-        
-      } catch (error) {
-        console.warn(`⚠️ Ошибка загрузки аудио ${item.name}:`, error);
-      }
-    }
-
-    return audioFiles;
-  };
-
-  // ИСПРАВЛЕННОЕ кодирование с поддержкой изображений
+  // Кодирование с FFmpeg
   const encodeWithFFmpeg = async (frames, audioFiles, duration) => {
     if (!window.fetchFile || frames.length === 0) {
-      throw new Error('Нет кадров для кодирования');
+      throw new Error("Нет кадров для кодирования");
     }
 
     try {
       await cleanupTempFiles(2000, 5);
 
-      // ИСПРАВЛЕНИЕ: Определяем тип кадров и выбираем правильное расширение
-      const hasImages = actualTimelineItems.some(item => 
-        item.type !== 'videos' && item.trackType !== 'audio'
+      const hasImages = actualTimelineItems.some(
+        (item) => item.type !== "videos" && item.trackType !== "audio"
       );
-      
+
       console.log(`📦 Кодируем ${frames.length} кадров, содержат изображения: ${hasImages}`);
-      
-      // Записываем кадры с правильным форматом
+
       for (let i = 0; i < frames.length; i++) {
         const frameData = await window.fetchFile(frames[i]);
-        
+
         if (hasImages) {
-          // Для изображений используем PNG
-          const filename = `frame_${i.toString().padStart(6, '0')}.png`;
+          const filename = `frame_${i.toString().padStart(6, "0")}.png`;
           await ffmpeg.writeFile(filename, frameData);
         } else {
-          // Для видео используем JPEG
-          const filename = `frame_${i.toString().padStart(6, '0')}.jpg`;
+          const filename = `frame_${i.toString().padStart(6, "0")}.jpg`;
           await ffmpeg.writeFile(filename, frameData);
         }
-        
+
         if (i % 50 === 0) {
           const progress = 60 + Math.round((i / frames.length) * 10);
           setExportProgress(progress);
         }
       }
 
-      // Записываем аудио файлы
       for (let i = 0; i < audioFiles.length; i++) {
         const audioFile = audioFiles[i];
         const audioFileName = `audio_${i}.mp3`;
@@ -672,341 +625,200 @@ const FFmpegVideoExporter = ({
 
       setExportProgress(70);
 
-      // ИСПРАВЛЕННАЯ команда FFmpeg с поддержкой изображений
+      // ✅ ПРАВИЛЬНАЯ FFmpeg команда с обрезкой аудио
       const args = [
-        '-framerate', exportSettings.fps.toString(),
+        "-framerate", exportSettings.fps.toString()
       ];
-      
-      // Выбираем правильный input pattern
+
+      // Входные файлы
       if (hasImages) {
-        args.push('-i', 'frame_%06d.png');
+        args.push("-i", "frame_%06d.png");
       } else {
-        args.push('-i', 'frame_%06d.jpg');
+        args.push("-i", "frame_%06d.jpg");
       }
-      
-      args.push('-t', Math.min(duration, frames.length / exportSettings.fps).toString());
 
-      // Добавляем аудио если есть
       if (audioFiles.length > 0) {
-        args.push('-i', 'audio_0.mp3');
-        
-        if (audioFiles.length > 1) {
-          for (let i = 1; i < audioFiles.length; i++) {
-            args.push('-i', `audio_${i}.mp3`);
-          }
-          
-          const filterComplex = audioFiles.map((_, i) => `[${i + 1}:a]`).join('') + 
-            `amix=inputs=${audioFiles.length}:duration=shortest:dropout_transition=0.5[aout]`;
-          
-          args.push('-filter_complex', filterComplex);
-          args.push('-map', '0:v');
-          args.push('-map', '[aout]');
-        } else {
-          args.push('-c:a', 'aac');
-          args.push('-b:a', '128k');
-          args.push('-ar', '44100');
-        }
-        
-        args.push('-shortest');
+        args.push("-i", "audio_0.mp3");
+        // Маппинг потоков
+        args.push("-map", "0:v");        // Видео из первого входа
+        args.push("-map", "1:a");        // Аудио из второго входа
       }
 
-      // УЛУЧШЕННЫЕ настройки для работы с изображениями
+      // ТОЧНАЯ длительность для ВСЕГО видео
+      args.push("-t", duration.toString());
+
+      // Видео настройки
       args.push(
-        // Видео кодек и профиль
-        '-c:v', 'libx264',
-        '-profile:v', 'main',
-        '-level', '3.1',
-        
-        // Качество и скорость
-        '-preset', 'medium',
-        '-crf', '23',
-        
-        // КРИТИЧЕСКИ ВАЖНО: Pixel format для изображений
-        '-pix_fmt', 'yuv420p',
-        
-        // ИСПРАВЛЕНИЕ: Фильтры для правильной обработки изображений
-        '-vf', 'format=yuv420p,scale=trunc(iw/2)*2:trunc(ih/2)*2', // Обеспечиваем четные размеры
-        
-        // Цветовые настройки
-        '-colorspace', 'bt709',
-        '-color_primaries', 'bt709',
-        '-color_trc', 'bt709',
-        
-        // Частота кадров и GOP
-        '-r', exportSettings.fps.toString(),
-        '-g', (exportSettings.fps * 2).toString(),
-        '-keyint_min', exportSettings.fps.toString(),
-        
-        // Дополнительные настройки совместимости
-        '-movflags', '+faststart',
-        '-strict', '-2',
-        '-threads', '0',
-        '-tune', hasImages ? 'stillimage' : 'film', // ИСПРАВЛЕНИЕ: Разные настройки для изображений
-        
-        'output.mp4'
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "30",
+        "-pix_fmt", "yuv420p",
+        "-profile:v", "baseline",
+        "-level", "3.0",
+        "-r", "24",
+        "-g", "24",
+        "-bf", "0",
+        "-refs", "1"
       );
 
-      console.log('🔧 Команда FFmpeg для изображений:', args.join(' '));
+      // Аудио настройки (если есть)
+      if (audioFiles.length > 0) {
+        args.push(
+          "-c:a", "aac",
+          "-b:a", "96k",
+          "-ar", "44100",
+          "-ac", "2",
+          "-strict", "-2"
+        );
+        console.log(`🎵 Аудио ОБРЕЗАЕТСЯ с ${audioFiles[0].duration || 'неизвестно'}s до ${duration}s`);
+      }
+
+      // Финальные настройки
+      args.push(
+        "-movflags", "+faststart",
+        "output.mp4"
+      );
+
+      console.log("🔧 Команда FFmpeg:", args.join(" "));
 
       await ffmpeg.exec(args);
-      
+
       setExportProgress(90);
 
-      const data = await ffmpeg.readFile('output.mp4');
-      const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+      const data = await ffmpeg.readFile("output.mp4");
+      const videoBlob = new Blob([data.buffer], { type: "video/mp4" });
 
       await cleanupTempFiles(frames.length, audioFiles.length);
       return videoBlob;
-
     } catch (error) {
       try {
         await cleanupTempFiles(frames.length, audioFiles.length);
       } catch (e) {}
-      
+
       throw new Error(`Ошибка кодирования: ${error.message}`);
     }
   };
 
-  // BASELINE профиль с поддержкой изображений
-  const encodeWithFFmpegBaseline = async (frames, audioFiles, duration) => {
-    if (!window.fetchFile || frames.length === 0) {
-      throw new Error('Нет кадров для кодирования');
-    }
-
-    try {
-      await cleanupTempFiles(2000, 5);
-
-      // Определяем тип кадров
-      const hasImages = actualTimelineItems.some(item => 
-        item.type !== 'videos' && item.trackType !== 'audio'
-      );
-
-      // Записываем кадры
-      for (let i = 0; i < frames.length; i++) {
-        const frameData = await window.fetchFile(frames[i]);
-        
-        if (hasImages) {
-          const filename = `frame_${i.toString().padStart(6, '0')}.png`;
-          await ffmpeg.writeFile(filename, frameData);
-        } else {
-          const filename = `frame_${i.toString().padStart(6, '0')}.jpg`;
-          await ffmpeg.writeFile(filename, frameData);
-        }
-        
-        if (i % 50 === 0) {
-          const progress = 60 + Math.round((i / frames.length) * 10);
-          setExportProgress(progress);
-        }
-      }
-
-      // Записываем аудио файлы
-      for (let i = 0; i < audioFiles.length; i++) {
-        const audioFile = audioFiles[i];
-        const audioFileName = `audio_${i}.mp3`;
-        await ffmpeg.writeFile(audioFileName, await window.fetchFile(audioFile.blob));
-      }
-
-      setExportProgress(70);
-
-      const args = [
-        '-framerate', exportSettings.fps.toString(),
-      ];
-      
-      if (hasImages) {
-        args.push('-i', 'frame_%06d.png');
-      } else {
-        args.push('-i', 'frame_%06d.jpg');
-      }
-      
-      args.push('-t', Math.min(duration, frames.length / exportSettings.fps).toString());
-
-      // Добавляем аудио если есть
-      if (audioFiles.length > 0) {
-        args.push('-i', 'audio_0.mp3');
-        args.push('-c:a', 'aac');
-        args.push('-b:a', '128k');
-        args.push('-ar', '44100');
-        args.push('-shortest');
-      }
-
-      // BASELINE профиль H.264 с поддержкой изображений
-      args.push(
-        '-c:v', 'libx264',
-        '-profile:v', 'baseline',
-        '-level', '3.0',
-        '-preset', 'medium',
-        '-crf', '23',
-        '-pix_fmt', 'yuv420p',
-        '-vf', 'format=yuv420p,scale=trunc(iw/2)*2:trunc(ih/2)*2',
-        '-r', exportSettings.fps.toString(),
-        '-g', (exportSettings.fps * 3).toString(),
-        '-movflags', '+faststart',
-        '-strict', '-2',
-        '-tune', hasImages ? 'stillimage' : 'film',
-        'output.mp4'
-      );
-
-      await ffmpeg.exec(args);
-      
-      setExportProgress(90);
-
-      const data = await ffmpeg.readFile('output.mp4');
-      const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-
-      await cleanupTempFiles(frames.length, audioFiles.length);
-      return videoBlob;
-
-    } catch (error) {
-      try {
-        await cleanupTempFiles(frames.length, audioFiles.length);
-      } catch (e) {}
-      
-      throw new Error(`Ошибка baseline кодирования: ${error.message}`);
-    }
-  };
-
-  // МАКСИМАЛЬНО СОВМЕСТИМАЯ функция с поддержкой изображений
-  const encodeWithFFmpegMaxCompatibility = async (frames, audioFiles, duration) => {
-    if (!window.fetchFile || frames.length === 0) {
-      throw new Error('Нет кадров для кодирования');
-    }
-
-    try {
-      await cleanupTempFiles(2000, 5);
-
-      // Определяем тип кадров
-      const hasImages = actualTimelineItems.some(item => 
-        item.type !== 'videos' && item.trackType !== 'audio'
-      );
-
-      // Записываем кадры
-      for (let i = 0; i < frames.length; i++) {
-        const frameData = await window.fetchFile(frames[i]);
-        
-        if (hasImages) {
-          const filename = `frame_${i.toString().padStart(6, '0')}.png`;
-          await ffmpeg.writeFile(filename, frameData);
-        } else {
-          const filename = `frame_${i.toString().padStart(6, '0')}.jpg`;
-          await ffmpeg.writeFile(filename, frameData);
-        }
-        
-        if (i % 50 === 0) {
-          const progress = 60 + Math.round((i / frames.length) * 10);
-          setExportProgress(progress);
-        }
-      }
-
-      // Записываем аудио
-      for (let i = 0; i < audioFiles.length; i++) {
-        const audioFile = audioFiles[i];
-        const audioFileName = `audio_${i}.mp3`;
-        await ffmpeg.writeFile(audioFileName, await window.fetchFile(audioFile.blob));
-      }
-
-      setExportProgress(70);
-
-      const args = [
-        '-framerate', '24', // Принудительно 24 FPS
-      ];
-      
-      if (hasImages) {
-        args.push('-i', 'frame_%06d.png');
-      } else {
-        args.push('-i', 'frame_%06d.jpg');
-      }
-      
-      args.push('-t', Math.min(duration, frames.length / 24).toString());
-
-      // Простое аудио
-      if (audioFiles.length > 0) {
-        args.push('-i', 'audio_0.mp3');
-        args.push('-c:a', 'aac');
-        args.push('-b:a', '96k');
-        args.push('-ar', '44100');
-        args.push('-ac', '2');
-        args.push('-shortest');
-      }
-
-      // САМЫЕ КОНСЕРВАТИВНЫЕ настройки H.264 с поддержкой изображений
-      args.push(
-        '-c:v', 'libx264',
-        '-profile:v', 'baseline',
-        '-level', '3.0',
-        '-b:v', '1500k', // Фиксированный битрейт
-        '-maxrate', '1500k',
-        '-bufsize', '3000k',
-        '-pix_fmt', 'yuv420p',
-        
-        // КРИТИЧЕСКИЕ фильтры для изображений
-        '-vf', 'format=yuv420p,scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=24',
-        
-        '-r', '24',
-        '-g', '48',
-        '-keyint_min', '24',
-        '-preset', 'slow',
-        '-tune', hasImages ? 'stillimage' : 'film',
-        '-movflags', '+faststart',
-        '-avoid_negative_ts', 'make_zero',
-        'output.mp4'
-      );
-
-      console.log('🔧 Максимально совместимая команда для изображений:', args.join(' '));
-
-      await ffmpeg.exec(args);
-      
-      setExportProgress(90);
-
-      const data = await ffmpeg.readFile('output.mp4');
-      const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-
-      await cleanupTempFiles(frames.length, audioFiles.length);
-      return videoBlob;
-
-    } catch (error) {
-      try {
-        await cleanupTempFiles(frames.length, audioFiles.length);
-      } catch (e) {}
-      
-      throw new Error(`Ошибка кодирования максимальной совместимости: ${error.message}`);
-    }
-  };
-
+  // Очистка файлов
   const cleanupTempFiles = async (frameCount, audioCount) => {
-    console.log('🧹 Очистка временных файлов...');
-    
-    // ИСПРАВЛЕНИЕ: Удаляем как PNG, так и JPEG кадры
     for (let i = 0; i < frameCount; i++) {
       try {
-        // Пытаемся удалить PNG
-        await ffmpeg.deleteFile(`frame_${i.toString().padStart(6, '0')}.png`);
+        await ffmpeg.deleteFile(`frame_${i.toString().padStart(6, "0")}.png`);
       } catch (e) {}
-      
       try {
-        // Пытаемся удалить JPEG
-        await ffmpeg.deleteFile(`frame_${i.toString().padStart(6, '0')}.jpg`);
+        await ffmpeg.deleteFile(`frame_${i.toString().padStart(6, "0")}.jpg`);
       } catch (e) {}
     }
 
-    // Удаляем аудио файлы
     for (let i = 0; i < audioCount; i++) {
       try {
         await ffmpeg.deleteFile(`audio_${i}.mp3`);
       } catch (e) {}
     }
 
-    // Удаляем выходной файл
     try {
-      await ffmpeg.deleteFile('output.mp4');
+      await ffmpeg.deleteFile("output.mp4");
     } catch (e) {}
-    
-    console.log('✅ Временные файлы очищены');
+  };
+
+  // Главная функция экспорта С ДИАГНОСТИКОЙ
+  const startExport = async () => {
+    if (!ffmpeg || isExporting || actualTimelineItems.length === 0) return;
+
+    setIsExporting(true);
+    setExportProgress(0);
+    setExportStage("preparing");
+    setError(null);
+
+    try {
+      console.log("🚀 ПОЛНАЯ ДИАГНОСТИКА ЭКСПОРТА:");
+      console.log("actualTimelineItems:", actualTimelineItems);
+      console.log("overlayTransforms:", overlayTransforms);
+      
+      // Детальная диагностика элементов С АНАЛИЗОМ ВРЕМЕНИ
+      console.log("\n📊 АНАЛИЗ ЭЛЕМЕНТОВ TIMELINE:");
+      actualTimelineItems.forEach((item, index) => {
+        const start = item.startTime || 0;
+        const duration = item.duration || 0;
+        const end = start + duration;
+        console.log(`${index + 1}. "${item.name}"`);
+        console.log(`   Тип: ${item.type} | Трек: ${item.trackType}`);
+        console.log(`   Время: ${start}s → ${end.toFixed(1)}s (длительность: ${duration}s)`);
+        console.log(`   URL: ${item.url ? 'есть' : 'НЕТ'}`);
+        if (item.trackType === "overlay") {
+          console.log(`   Overlay координаты: ${overlayTransforms[item.id] ? 'есть' : 'НЕТ'}`);
+        }
+      });
+      
+      const visualItems = actualTimelineItems.filter(item => 
+        item.trackType === "main" || item.trackType === "overlay"
+      );
+      const maxVisualTime = visualItems.length > 0 ? Math.max(...visualItems.map(item => (item.startTime || 0) + (item.duration || 0))) : 0;
+      console.log(`\n⏱️ Максимальное время визуального контента: ${maxVisualTime}s`);
+      console.log(`⏱️ Будем экспортировать: ${Math.min(maxVisualTime, 30)}s\n`);
+
+      console.log(`🎬 Начинаем экспорт с максимальной совместимостью`);
+
+      const totalDuration = calculateTotalDuration();
+      // ✅ НЕ ограничиваем дополнительно - уже ограничено в calculateTotalDuration
+      const actualDuration = totalDuration;
+      
+      console.log(`📐 ФИНАЛЬНАЯ длительность экспорта: ${actualDuration}s`);
+
+      setExportStage("rendering_frames");
+      const frames = await renderAllFrames(actualDuration);
+      setExportProgress(50);
+
+      setExportStage("processing_audio");
+      const audioFiles = await prepareAudioFiles();
+      setExportProgress(60);
+      
+      console.log(`🎵 Подготовленных аудио файлов: ${audioFiles.length}`);
+      audioFiles.forEach((audio, i) => {
+        console.log(`  Аудио ${i + 1}: ${audio.name} размер:${(audio.blob.size / 1024).toFixed(1)}KB`);
+      });
+
+      setExportStage("encoding");
+      const videoBlob = await encodeWithFFmpeg(frames, audioFiles, actualDuration);
+
+      setExportProgress(95);
+
+      setExportStage("downloading");
+      await downloadVideo(videoBlob);
+      setExportProgress(100);
+
+      setExportStage("completed");
+      
+      // ✅ ФИНАЛЬНАЯ ДИАГНОСТИКА
+      console.log(`✅ ЭКСПОРТ ЗАВЕРШЕН!`);
+      console.log(`📹 Размер видео: ${(videoBlob.size / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`⏱️ Длительность: ${actualDuration}s`);
+      console.log(`🎞️ Кадров: ${frames.length}`);
+      console.log(`🎵 Аудио: ${audioFiles.length > 0 ? "включено" : "нет"}`);
+      console.log(`🖼️ Overlay: ${actualTimelineItems.filter(i => i.trackType === "overlay").length} элементов`);
+      
+      setTimeout(() => {
+        setExportStage("ready");
+        setExportProgress(0);
+      }, 3000);
+      
+      // ✅ ПОКАЗЫВАЕМ ВОПРОС О СОЗДАНИИ ОБЛОЖКИ
+      setTimeout(() => {
+        setShowThumbnailQuestion(true);
+      }, 1500);
+    } catch (error) {
+      console.error("❌ Ошибка экспорта:", error);
+      setError(error.message);
+      setExportStage("error");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const downloadVideo = async (blob) => {
     const filename = `${exportSettings.filename}.${exportSettings.format}`;
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
@@ -1017,17 +829,16 @@ const FFmpegVideoExporter = ({
 
   const getStageText = () => {
     switch (exportStage) {
-      case "loading": return "Загрузка FFmpeg...";
-      case "preparing": return "Анализ timeline...";
-      case "loading_media": return "Загрузка медиа файлов...";
-      case "rendering_frames": return `Рендеринг кадров...`;
-      case "processing_audio": return "Подготовка аудио треков...";
-      case "encoding": return `Кодирование (${exportSettings.compatibilityMode} режим)...`;
-      case "downloading": return "Сохранение файла...";
-      case "completed": return "✅ Экспорт завершен! Видео должно воспроизводиться.";
-      case "error": return "Произошла ошибка";
-      case "ready": return `Готов к экспорту (${actualTimelineItems.length} элементов, ${exportSettings.compatibilityMode} режим)`;
-      default: return "Ожидание...";
+      case "loading": return "Loading FFmpeg...";
+      case "preparing": return "Analyzing timeline...";
+      case "rendering_frames": return "Rendering frames...";
+      case "processing_audio": return "Preparing audio tracks...";
+      case "encoding": return "Encoding video...";
+      case "downloading": return "Saving file...";
+      case "completed": return "✅ Export completed! Video should play.";
+      case "error": return "An error occurred";
+      case "ready": return `Ready to export (${actualTimelineItems.length} elements)`;
+      default: return "Waiting...";
     }
   };
 
@@ -1051,7 +862,7 @@ const FFmpegVideoExporter = ({
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center">
             <Film size={24} className="mr-3 text-blue-600" />
-            🖼️ ЭКСПОРТ С ПОДДЕРЖКОЙ ИЗОБРАЖЕНИЙ (исправлена проблема альфа-канала)
+            🎬 Video Export with Overlay & Audio
           </h2>
           <button
             onClick={onClose}
@@ -1063,15 +874,14 @@ const FFmpegVideoExporter = ({
         </div>
 
         <div className="p-6 space-y-6 max-h-[calc(95vh-140px)] overflow-y-auto">
-          
           {actualTimelineItems.length === 0 && (
             <div className="bg-red-50 border-2 border-red-300 rounded-xl p-6">
               <div className="flex items-start">
                 <AlertCircle size={24} className="text-red-600 mr-3 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-bold text-red-800 text-lg mb-2">❌ НЕТ ДАННЫХ TIMELINE!</h4>
+                  <h4 className="font-bold text-red-800 text-lg mb-2">❌ NO TIMELINE DATA!</h4>
                   <p className="text-red-700 mb-3">
-                    Компонент экспорта не получает данные из timeline. Проверьте передачу пропсов.
+                    Export component is not receiving timeline data. Check props passing.
                   </p>
                 </div>
               </div>
@@ -1083,12 +893,13 @@ const FFmpegVideoExporter = ({
               <div className="flex items-start">
                 <AlertCircle size={20} className="text-red-600 mr-3 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-red-800">Ошибка</h4>
+                  <h4 className="font-medium text-red-800">Error</h4>
                   <p className="text-sm text-red-600 mt-1">{error}</p>
                 </div>
               </div>
             </div>
           )}
+
           <div className={`rounded-xl p-4 border ${
             exportStage === "error" ? "bg-red-50 border-red-200" :
             exportStage === "completed" ? "bg-green-50 border-green-200" :
@@ -1132,61 +943,39 @@ const FFmpegVideoExporter = ({
           <div className="bg-gray-50 rounded-xl p-4">
             <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
               <Settings size={16} className="mr-2" />
-              Настройки экспорта (исправлена совместимость)
+              Export Settings
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Разрешение
-                </label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Resolution</label>
                 <select
                   value={exportSettings.resolution}
                   onChange={(e) => setExportSettings(prev => ({ ...prev, resolution: e.target.value }))}
                   className="w-full p-2 text-sm border border-gray-300 rounded-lg"
                   disabled={isExporting || isLoading}
                 >
-                  <option value="640x480">480p (быстро)</option>
-                  <option value="1280x720">720p (рекомендуется)</option>
-                  <option value="1920x1080">1080p (медленно)</option>
+                  <option value="640x480">480p (fast)</option>
+                  <option value="1280x720">720p (recommended)</option>
+                  <option value="1920x1080">1080p (slow)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  FPS
-                </label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">FPS</label>
                 <select
                   value={exportSettings.fps}
                   onChange={(e) => setExportSettings(prev => ({ ...prev, fps: parseInt(e.target.value) }))}
                   className="w-full p-2 text-sm border border-gray-300 rounded-lg"
                   disabled={isExporting || isLoading}
                 >
-                  <option value="24">24 FPS (стандарт)</option>
-                  <option value="30">30 FPS (плавно)</option>
-                  <option value="60">60 FPS (очень плавно)</option>
+                  <option value="24">24 FPS (standard)</option>
+                  <option value="30">30 FPS (smooth)</option>
+                  <option value="60">60 FPS (very smooth)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  🔧 Режим совместимости
-                </label>
-                <select
-                  value={exportSettings.compatibilityMode}
-                  onChange={(e) => setExportSettings(prev => ({ ...prev, compatibilityMode: e.target.value }))}
-                  className="w-full p-2 text-sm border border-gray-300 rounded-lg"
-                  disabled={isExporting || isLoading}
-                >
-                  <option value="standard">Стандартный (Main Profile)</option>
-                  <option value="baseline">Baseline (максимальная совместимость)</option>
-                  <option value="maximum">Максимальная (для старых устройств)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Имя файла
-                </label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">File name</label>
                 <input
                   type="text"
                   value={exportSettings.filename}
@@ -1196,48 +985,57 @@ const FFmpegVideoExporter = ({
                 />
               </div>
             </div>
+
+            <div className="mt-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={exportSettings.includeAudio}
+                  onChange={(e) => setExportSettings(prev => ({ ...prev, includeAudio: e.target.checked }))}
+                  disabled={isExporting || isLoading}
+                  className="rounded"
+                />
+                <span className="text-sm">Include audio</span>
+              </label>
+            </div>
           </div>
 
           {actualTimelineItems.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h4 className="font-medium text-blue-800 mb-2">📊 Диагностика данных</h4>
+              <h4 className="font-medium text-blue-800 mb-2">📊 Data Diagnostics</h4>
               <div className="text-xs text-blue-700 space-y-1">
-                <p><strong>Элементов timeline:</strong> {actualTimelineItems.length}</p>
-                <p><strong>Изображений:</strong> {actualTimelineItems.filter(item => item.type !== 'videos' && item.trackType !== 'audio').length}</p>
-                <p><strong>Видео:</strong> {actualTimelineItems.filter(item => item.type === 'videos').length}</p>
-                <p><strong>Аудио:</strong> {actualTimelineItems.filter(item => item.trackType === 'audio').length}</p>
-                <p><strong>Расчетная длительность:</strong> {calculateTotalDuration().toFixed(1)}s</p>
-                <p><strong>Режим совместимости:</strong> {exportSettings.compatibilityMode}</p>
+                <p><strong>Timeline elements:</strong> {actualTimelineItems.length}</p>
+                <p><strong>Images:</strong> {actualTimelineItems.filter(item => item.type !== "videos" && item.trackType !== "audio").length}</p>
+                <p><strong>Videos:</strong> {actualTimelineItems.filter(item => item.type === "videos").length}</p>
+                <p><strong>Audio:</strong> {actualTimelineItems.filter(item => item.trackType === "audio").length}</p>
+                <p><strong>Calculated duration:</strong> {calculateTotalDuration().toFixed(1)}s</p>
+                <p><strong>Overlay coordinates:</strong> {Object.keys(overlayTransforms).length}</p>
               </div>
             </div>
           )}
+
           {exportStage === "ready" && (
             <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Превью экспорта</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Export Preview</h3>
               <div className="flex gap-4">
                 <div className="flex-1">
                   <div className="bg-black rounded-lg aspect-video flex items-center justify-center overflow-hidden relative">
                     {previewFrame ? (
-                      <img 
-                        src={previewFrame} 
-                        alt="Preview" 
-                        className="max-w-full max-h-full object-contain"
-                      />
+                      <img src={previewFrame} alt="Preview" className="max-w-full max-h-full object-contain" />
                     ) : (
-                      <div className="text-white text-sm">Создание превью...</div>
+                      <div className="text-white text-sm">Creating preview...</div>
                     )}
-                    
                     <button
                       onClick={generatePreviewFrame}
                       className="absolute top-2 right-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
                     >
-                      Обновить превью
+                      Update Preview
                     </button>
                   </div>
                 </div>
                 <div className="w-48 space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Разрешение:</span>
+                    <span className="text-gray-600">Resolution:</span>
                     <span className="font-medium">{exportSettings.resolution}</span>
                   </div>
                   <div className="flex justify-between">
@@ -1245,11 +1043,11 @@ const FFmpegVideoExporter = ({
                     <span className="font-medium">{exportSettings.fps}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Режим:</span>
-                    <span className="font-medium">{exportSettings.compatibilityMode}</span>
+                    <span className="text-gray-600">Audio:</span>
+                    <span className="font-medium">{exportSettings.includeAudio ? "Enabled" : "Disabled"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Длительность:</span>
+                    <span className="text-gray-600">Duration:</span>
                     <span className="font-medium">{Math.round(calculateTotalDuration())}s</span>
                   </div>
                 </div>
@@ -1258,28 +1056,26 @@ const FFmpegVideoExporter = ({
           )}
         </div>
 
-        <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50 relative z-[10000]">
+        <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
           <div className="text-xs text-gray-500">
-            {exportStage === "ready" && actualTimelineItems.length > 0 ? (
-              `Готов к экспорту • ${exportSettings.compatibilityMode} режим • ${actualTimelineItems.filter(i => i.trackType === 'audio').length} аудио • ${actualTimelineItems.filter(item => item.type !== 'videos' && item.trackType !== 'audio').length} изображений`
-            ) : exportStage === "loading" ? (
-              'Загрузка FFmpeg...'
-            ) : (
-              'Добавьте элементы в таймлайн'
-            )}
+            {exportStage === "ready" && actualTimelineItems.length > 0
+              ? `Ready to export • ${actualTimelineItems.filter(i => i.trackType === "audio").length} audio • ${actualTimelineItems.filter(item => item.type !== "videos" && item.trackType !== "audio").length} images`
+              : exportStage === "loading"
+              ? "Loading FFmpeg..."
+              : "Add elements to timeline"}
           </div>
           <div className="flex space-x-3">
             <button
               onClick={onClose}
-              className="px-6 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors relative z-[10001]"
+              className="px-6 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
               disabled={isExporting}
             >
-              Закрыть
+              Close
             </button>
             <button
               onClick={startExport}
               disabled={!canExport}
-              className={`px-6 py-2 text-sm rounded-lg font-medium transition-all flex items-center relative z-[10001] ${
+              className={`px-6 py-2 text-sm rounded-lg font-medium transition-all flex items-center ${
                 !canExport
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : "bg-green-600 text-white hover:bg-green-700 shadow-lg"
@@ -1288,26 +1084,38 @@ const FFmpegVideoExporter = ({
               {isExporting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Экспорт... {exportProgress}%
+                  Exporting... {exportProgress}%
                 </>
               ) : isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Загрузка...
+                  Loading...
                 </>
               ) : (
                 <>
                   <Download size={16} className="mr-2" />
-                  Экспорт с изображениями
+                  Export Video
                 </>
               )}
             </button>
           </div>
         </div>
 
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
-        <canvas ref={previewCanvasRef} style={{ display: 'none' }} />
+        <canvas ref={canvasRef} style={{ display: "none" }} />
+        <canvas ref={previewCanvasRef} style={{ display: "none" }} />
       </div>
+      
+      {/* ✅ МОДАЛКИ ДЛЯ СОЗДАНИЯ ОБЛОЖЕК */}
+      <ThumbnailQuestionModal
+        isOpen={showThumbnailQuestion}
+        onResponse={handleThumbnailResponse}
+      />
+
+      <ThumbnailCreator
+        isOpen={showThumbnailCreator}
+        onClose={handleThumbnailCreatorClose}
+        exportSettings={exportSettings}
+      />
     </div>
   );
 };

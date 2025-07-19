@@ -499,10 +499,10 @@ export const MediaLibrary = ({
             >
               <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3 shadow-sm group-hover:shadow">
                 {activeTab === "videos" && (
-                  <Video size={20} className="text-blue-500" />
+                  <Video data-item-id={item.id} size={20} className="text-blue-500" />
                 )}
                 {activeTab === "audios" && (
-                  <Music size={20} className="text-green-500" />
+                  <Music  data-item-id={item.id} size={20} className="text-green-500" />
                 )}
                 {activeTab === "images" && (
                   <Image size={20} className="text-purple-500" />
@@ -535,7 +535,7 @@ export const MediaLibrary = ({
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 {activeTab === "videos" && (
-                  <Video size={24} className="text-gray-400" />
+                  <Video  size={24} className="text-gray-400" />
                 )}
                 {activeTab === "audios" && (
                   <Music size={24} className="text-gray-400" />
