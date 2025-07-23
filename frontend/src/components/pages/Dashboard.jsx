@@ -35,10 +35,10 @@ const Dashboard = () => {
       gradient: "from-green-500 to-teal-500",
     },
     {
-      title: "Use Teleprompter",
-      description: "Record with high-speed scrolling",
+      title: "Thumbnail Generator",
+      description: "Generate creative Thumbnail",
       icon: Mic,
-      link: "/app/teleprompter",
+      link: "/app/thumbnail",
       gradient: "from-orange-500 to-red-500",
     },
     {
@@ -56,24 +56,28 @@ const Dashboard = () => {
       value: user?.videosCreated || 0,
       icon: VideoIcon,
       color: "text-blue-600",
+      disabled: false,
     },
     {
       label: "Scripts Generated",
-      value: "12", // Можно получать из API
+      value: "12",
       icon: FileText,
       color: "text-green-600",
+      disabled: true,
     },
     {
       label: "Hours Saved",
       value: "48",
       icon: Clock,
       color: "text-purple-600",
+      disabled: true,
     },
     {
       label: "Content Score",
       value: "9.2/10",
       icon: Star,
       color: "text-orange-600",
+      disabled: true,
     },
   ];
 
@@ -97,7 +101,6 @@ const Dashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Welcome Header */}
       <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-slate-200/50 shadow-xl">
         <div className="flex items-center justify-between">
           <div>
@@ -108,7 +111,6 @@ const Dashboard = () => {
               Ready to create amazing videos? Let's get started.
             </p>
 
-            {/* Plan status */}
             <div className="flex items-center space-x-4">
               <div
                 className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold ${
@@ -129,7 +131,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Quick stats */}
           <div className="hidden lg:block text-right">
             <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-1">
               {user?.videosCreated || 0}
@@ -139,7 +140,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Upgrade Banner for Free Users */}
       {planInfo.showUpgrade && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
           <div className="flex items-center justify-between">
@@ -167,7 +167,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Quick Actions */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Quick Actions</h2>
@@ -188,7 +187,7 @@ const Dashboard = () => {
             return (
               <Link
                 key={index}
-                to={isDisabled ? "#" : action.link}
+                to={isDisabled || action.disabled ? "#" : action.link}
                 className={`group bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 ${
                   isDisabled
                     ? "opacity-50 cursor-not-allowed"
@@ -223,7 +222,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Stats */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
           Your Performance
@@ -234,6 +232,7 @@ const Dashboard = () => {
             const IconComponent = stat.icon;
             return (
               <div
+                disabled={stat.disabled}
                 key={index}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50 shadow-xl"
               >
@@ -257,7 +256,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Activity Placeholder */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-slate-200/50 shadow-xl">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
           Recent Activity

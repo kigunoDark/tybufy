@@ -165,7 +165,6 @@ export const Timeline = ({
     [timelineItems, currentTime]
   );
 
-  // Утилиты
   const getTimelineWidth = () => {
     const baseWidth = videoDuration * 50 * timelineZoom;
     return Math.max(baseWidth, 2000);
@@ -303,7 +302,6 @@ export const Timeline = ({
     setDraggedTimelineItem(timelineItem);
     setIsTimelineDragging(true);
 
-    const rect = timelineScrollRef.current.getBoundingClientRect();
     const itemRect = e.target.getBoundingClientRect();
     setDragOffset(
       e.clientX - itemRect.left + timelineScrollRef.current.scrollLeft
@@ -674,6 +672,7 @@ export const Timeline = ({
         isResizing={isResizing}
         setShowExportModal={setShowExportModal}
         dropPreview={dropPreview}
+        timelineItems={timelineItems}
         draggedTimelineItem={draggedTimelineItem}
         resizeItem={resizeItem}
         resizeHandle={resizeHandle}

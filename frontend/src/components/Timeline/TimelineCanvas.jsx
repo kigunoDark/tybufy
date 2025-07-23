@@ -35,7 +35,6 @@ export const TimelineCanvas = ({
   onOpacityChange,
   showOpacityControls = true,
 }) => {
-  console.log(timelineItems);
   return (
     <div
       ref={(el) => {

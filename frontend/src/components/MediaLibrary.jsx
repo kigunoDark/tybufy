@@ -60,9 +60,6 @@ export const MediaLibrary = ({
       
       request.onsuccess = () => {
         const files = request.result;
-        console.log('✅ Загружено файлов из DB:', files.length);
-        
-        // Группируем файлы по типам и создаем URLs
         const groupedFiles = {
           videos: [],
           audios: [],
@@ -70,13 +67,11 @@ export const MediaLibrary = ({
         };
         
         files.forEach(file => {
-          // Создаем новый URL для файла
           const url = URL.createObjectURL(file.blob);
           const fileWithUrl = { 
             ...file, 
             url,
-            // ✅ ИСПРАВЛЕНО: убеждаемся что type правильный
-            type: file.mediaType || file.type // используем mediaType как основной тип
+            type: file.mediaType || file.type
           };
           
           if (file.mediaType && groupedFiles[file.mediaType]) {
@@ -85,11 +80,6 @@ export const MediaLibrary = ({
         });
         
         setMediaLibrary(groupedFiles);
-        console.log('✅ Файлы восстановлены:', {
-          videos: groupedFiles.videos.length,
-          audios: groupedFiles.audios.length,
-          images: groupedFiles.images.length
-        });
       };
     } catch (error) {
       console.error('❌ Ошибка загрузки из DB:', error);

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Upload,
@@ -26,6 +26,7 @@ import {
   AlertCircle,
   Award,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 const ContentStudio = ({
   isLeftPanelCollapsed,
@@ -35,15 +36,13 @@ const ContentStudio = ({
   selectedLanguage,
   setSelectedLanguage,
   topic,
+  loading,
   setTopic,
   keyPoints,
   duration,
   setDuration,
   script,
   setScript,
-  isGeneratingKeyPoints,
-  isGeneratingScript,
-  isExtendingScript,
   isAuthenticated,
   audioMethod,
   setAudioMethod,
@@ -67,6 +66,14 @@ const ContentStudio = ({
   const [isContentTypeDropdownOpen, setIsContentTypeDropdownOpen] =
     useState(false);
 
+  const [voices, setVoices] = useState([]);
+  const [selectedVoiceId, setSelectedVoiceId] = useState(
+    "JBFqnCBsd6RMkjVDRZzb"
+  );
+  const [voicesLoading, setVoicesLoading] = useState(false);
+
+  const { getAvailableVoices } = useAuth();
+
   const languages = [
     { id: "english", name: "English", flag: "🇺🇸" },
     { id: "russian", name: "Русский", flag: "🇷🇺" },
@@ -75,6 +82,38 @@ const ContentStudio = ({
     { id: "german", name: "Deutsch", flag: "🇩🇪" },
     { id: "chinese", name: "中文", flag: "🇨🇳" },
   ];
+
+  useEffect(() => {
+    const fetchVoices = async () => {
+      if (!isAuthenticated) return;
+
+      setVoicesLoading(true);
+      try {
+        const result = await getAvailableVoices();
+        console.log("🎤 Загруженные голоса:", result);
+
+        if (result.success && result.voices) {
+          setVoices(result.voices);
+
+          // Устанавливаем первый голос как выбранный, если текущий не найден
+          if (
+            result.voices.length > 0 &&
+            !result.voices.find((v) => v.voice_id === selectedVoiceId)
+          ) {
+            setSelectedVoiceId(result.voices[0].voice_id);
+          }
+        } else {
+          console.error("❌ Ошибка загрузки голосов:", result.error);
+        }
+      } catch (error) {
+        console.error("❌ Ошибка при загрузке голосов:", error);
+      } finally {
+        setVoicesLoading(false);
+      }
+    };
+
+    fetchVoices();
+  }, [isAuthenticated, getAvailableVoices]);
 
   const scriptRef = useRef(null);
 
@@ -703,16 +742,10 @@ const ContentStudio = ({
                 <div className="flex space-x-1">
                   <button
                     onClick={generateKeyPoints}
-                    disabled={
-                      !topic.trim() ||
-                      isGeneratingKeyPoints ||
-                      isGeneratingScript ||
-                      isExtendingScript ||
-                      !isAuthenticated
-                    }
+                    disabled={!topic.trim() || loading || !isAuthenticated}
                     className="flex items-center px-1 py-0.5 text-xs bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow hover:shadow-lg hover:scale-105 font-semibold"
                   >
-                    {isGeneratingKeyPoints ? (
+                    {loading ? (
                       <>
                         <div className="animate-spin rounded-full h-2 w-2 border border-white border-t-transparent mr-1"></div>
                         Gen...
@@ -726,12 +759,7 @@ const ContentStudio = ({
                   </button>
                   <button
                     onClick={addKeyPoint}
-                    disabled={
-                      keyPoints.length >= 10 ||
-                      isGeneratingKeyPoints ||
-                      isGeneratingScript ||
-                      isExtendingScript
-                    }
+                    disabled={keyPoints.length >= 10 || loading}
                     className="flex items-center px-1 py-0.5 text-xs bg-gradient-to-r from-slate-500 to-blue-500 hover:from-slate-600 hover:to-blue-600 text-white rounded disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow hover:shadow-lg hover:scale-105 font-semibold"
                   >
                     <Plus size={8} className="mr-1" />
@@ -788,28 +816,22 @@ const ContentStudio = ({
             {/* Generate Button */}
             <button
               onClick={generateScript}
-              disabled={
-                !topic ||
-                isGeneratingScript ||
-                isGeneratingKeyPoints ||
-                isExtendingScript ||
-                !isAuthenticated
-              }
+              disabled={!topic || loading || !isAuthenticated}
               className="w-full bg-gradient-to-r from-slate-600 to-blue-600 hover:from-slate-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-2 px-2 rounded transition-all duration-300 flex items-center justify-center shadow hover:shadow-lg hover:scale-105 group overflow-hidden relative text-xs"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-slate-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <span className="relative flex items-center">
-                {isGeneratingScript ? (
+                {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent mr-1"></div>
                     Generating script...
                   </>
-                ) : isGeneratingKeyPoints ? (
+                ) : loading ? (
                   <>
                     <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent mr-1"></div>
                     Waiting for key points...
                   </>
-                ) : isExtendingScript ? (
+                ) : loading ? (
                   <>
                     <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent mr-1"></div>
                     Expanding script...
@@ -844,7 +866,7 @@ const ContentStudio = ({
             )}
 
             {/* Script Editor */}
-            {script && !isGeneratingScript ? (
+            {script && !loading ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -862,15 +884,11 @@ const ContentStudio = ({
                     </div>
                     <button
                       onClick={extendScript}
-                      disabled={
-                        isExtendingScript ||
-                        isGeneratingKeyPoints ||
-                        !isAuthenticated
-                      }
+                      disabled={loading || loading || !isAuthenticated}
                       className="flex items-center px-1 py-0.5 text-xs bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded transition-all duration-300 shadow hover:shadow-lg hover:scale-105 font-semibold"
                       title="Add more content to script"
                     >
-                      {isExtendingScript ? (
+                      {loading ? (
                         <>
                           <div className="animate-spin rounded-full h-2 w-2 border border-white border-t-transparent mr-0.5"></div>
                           Exp...
@@ -940,7 +958,7 @@ const ContentStudio = ({
                   />
                 )}
               </div>
-            ) : script && script.length && isGeneratingScript ? (
+            ) : script && script.length && loading ? (
               <ScriptEditorSkeleton />
             ) : null}
 
@@ -1016,13 +1034,36 @@ const ContentStudio = ({
                       <label className="block text-gray-700 font-semibold mb-3 text-xs">
                         Select voice
                       </label>
-                      <select className="w-full p-1 bg-white border border-slate-200 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 shadow hover:shadow-lg font-medium text-xs">
-                        <option>Alexei - Male, professional</option>
-                        <option>Anya - Female, friendly</option>
-                        <option>Dmitry - Young male, energetic</option>
-                        <option>Elena - Female, strict</option>
-                        <option>Maxim - Male, charismatic</option>
-                      </select>
+                      {voicesLoading ? (
+                        <div className="w-full p-2 bg-gray-100 border border-slate-200 rounded text-center text-xs">
+                          <div className="flex items-center justify-center space-x-2">
+                            <div className="animate-spin rounded-full h-3 w-3 border border-blue-500 border-t-transparent"></div>
+                            <span className="text-gray-600">
+                              Loading voices...
+                            </span>
+                          </div>
+                        </div>
+                      ) : voices.length > 0 ? (
+                        <select
+                          value={selectedVoiceId}
+                          onChange={(e) => setSelectedVoiceId(e.target.value)}
+                          className="w-full p-1 bg-white border border-slate-200 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 shadow hover:shadow-lg font-medium text-xs"
+                        >
+                          {voices.map((voice) => (
+                            <option key={voice.voice_id} value={voice.voice_id}>
+                              {voice.name} - {voice.gender || "Unknown"}{" "}
+                              {voice.accent || ""} ({voice.age || "Unknown"})
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <select className="w-full p-1 bg-white border border-slate-200 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 shadow hover:shadow-lg font-medium text-xs">
+                          <option>George - Male, professional</option>
+                          <option>Rachel - Female, friendly</option>
+                          <option>Domi - Female, energetic</option>
+                          <option>Bella - Female, young</option>
+                        </select>
+                      )}
                     </div>
                     <div>
                       <label className="block text-gray-700 font-semibold mb-3 text-xs">
@@ -1042,12 +1083,14 @@ const ContentStudio = ({
                       </div>
                     </div>
                     <button
-                      onClick={generateAudio}
-                      disabled={!isAuthenticated}
-                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-1 px-2 rounded transition-all duration-300 shadow hover:shadow-lg hover:scale-105 text-xs"
+                      onClick={() => generateAudio(selectedVoiceId)} 
+                      disabled={!isAuthenticated || voicesLoading}
+                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-1 px-2 rounded transition-all duration-300 shadow hover:shadow-lg hover:scale-105 text-xs"
                     >
                       <Volume2 className="mr-1 inline" size={10} />
-                      Generate AI voiceover
+                      {voicesLoading
+                        ? "Loading voices..."
+                        : "Generate AI voiceover"}
                     </button>
                   </div>
                 )}

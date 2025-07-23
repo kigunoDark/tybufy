@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 const TubifyLanding = () => {
-  const { isAuthenticated, loading } = useAuth(); // Получаем состояние авторизации
+  const { isAuthenticated, loading } = useAuth();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [stats, setStats] = useState({
     users: 0,
@@ -183,7 +183,6 @@ const TubifyLanding = () => {
     },
   ];
 
-  // Если идет загрузка, показываем индикатор
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
@@ -195,7 +194,6 @@ const TubifyLanding = () => {
     );
   }
 
-  // Если пользователь авторизован, перенаправляем на /app
   if (isAuthenticated) {
     return <Navigate to="/app" replace />;
   }

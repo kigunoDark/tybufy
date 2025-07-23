@@ -1,39 +1,38 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { HelpCircle } from "lucide-react";
 
-// Решение 1: Tooltip с порталом (рекомендуемое)
 export const HelpButtonWithTooltip = () => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const buttonRef = useRef(null);
 
-  const tooltipContent = `Горячие клавиши:
-• Ctrl + Колесо мыши - Зум (фокус на курсор)
-• Shift + Колесо мыши - Горизонтальная прокрутка
-• Колесо мыши - Вертикальная прокрутка
-• Двойной клик - Добавить элемент в позицию клика
-• Ctrl + C - Копировать
-• Ctrl + V - Вставить
-• Ctrl + B - Разрезать
-• Del/Backspace - Удалить
-• + - Приблизить
-• - - Отдалить
-• 0 - Сбросить зум
+  const tooltipContent = `Hotkeys:
+• Ctrl + Mouse Wheel - Zoom (focus on cursor)
+• Shift + Mouse Wheel - Horizontal scroll
+• Mouse Wheel - Vertical scroll
+• Double click - Add element at click position
+• Ctrl + C - Copy
+• Ctrl + V - Paste
+• Ctrl + B - Split
+• Del/Backspace - Delete
+• + - Zoom in
+• - - Zoom out
+• 0 - Reset zoom
 
-Умное размещение:
-• Видео → Main дорожка
-• Аудио → Audio дорожка  
-• Картинки/Текст → Overlay дорожка
-• Автоматический поиск лучшей позиции
-• Размещение в текущем времени или после последнего элемента`;
+Smart placement:
+• Video → Main track
+• Audio → Audio track  
+• Images/Text → Overlay track
+• Automatically finds the best position
+• Places element at current time or after the last item`;
 
   const updateTooltipPosition = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setTooltipPosition({
         x: rect.left + rect.width / 2,
-        y: rect.top - 8, // немного выше кнопки
+        y: rect.top - 8,
       });
     }
   };
@@ -91,7 +90,6 @@ export const HelpButtonWithTooltip = () => {
         <HelpCircle size={16} />
       </button>
 
-      {/* Рендерим tooltip в body через портал */}
       {typeof document !== "undefined" && createPortal(tooltip, document.body)}
     </>
   );

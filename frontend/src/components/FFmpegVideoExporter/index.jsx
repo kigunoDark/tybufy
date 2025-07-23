@@ -22,22 +22,8 @@ const FFmpegVideoExporter = ({
   clips,
   mediaItems,
 }) => {
-  // Поддержка разных способов передачи данных
   const actualTimelineItems = React.useMemo(() => {
     const items = timelineItems || timelineData || elements || clips || mediaItems || [];
-
-    console.log("🔄 Получили данные timeline:", {
-      timelineItems: timelineItems?.length || 0,
-      timelineData: timelineData?.length || 0,
-      elements: elements?.length || 0,
-      clips: clips?.length || 0,
-      mediaItems: mediaItems?.length || 0,
-      finalItems: items?.length || 0,
-    });
-
-    if (items?.length > 0) {
-      console.log("📋 Первый элемент timeline:", items[0]);
-    }
 
     return items;
   }, [timelineItems, timelineData, elements, clips, mediaItems]);
@@ -61,13 +47,11 @@ const FFmpegVideoExporter = ({
   const canvasRef = useRef(null);
   const previewCanvasRef = useRef(null);
   const mediaCache = useRef(new Map());
-
-  // ✅ Состояния для управления thumbnail модалками
   const [showThumbnailQuestion, setShowThumbnailQuestion] = useState(false);
   const [showThumbnailCreator, setShowThumbnailCreator] = useState(false);
 
   const navigateToApp = () => {
-    window.location.href = "http://localhost:3000/app";
+    window.location.href = `${process.env.REACT_APP__URL}/app/video-maker` || "http://localhost:3000/app";
   };
 
   const handleThumbnailResponse = (wantThumbnail) => {
@@ -87,11 +71,9 @@ const FFmpegVideoExporter = ({
     navigateToApp();
   };
 
-  // Расчет длительности ИСПРАВЛЕННЫЙ
   const calculateTotalDuration = () => {
     if (actualTimelineItems.length === 0) return videoDuration;
 
-    // Находим максимальное время окончания ТОЛЬКО для видео/изображений
     const visualItems = actualTimelineItems.filter(item => 
       item.trackType === "main" || item.trackType === "overlay"
     );
@@ -104,13 +86,11 @@ const FFmpegVideoExporter = ({
       )
     );
 
-    // ✅ ОГРАНИЧИВАЕМ максимум 30 секундами
     const calculatedDuration = Math.min(maxEndTime, 30);
-    console.log(`⏱️ ИСПРАВЛЕННАЯ длительность: ${calculatedDuration.toFixed(2)}s (макс визуальный контент)`);
     return calculatedDuration;
   };
 
-  // Инициализация FFmpeg
+
   useEffect(() => {
     const initFFmpeg = async () => {
       if (ffmpeg || !isOpen) return;
@@ -120,8 +100,6 @@ const FFmpegVideoExporter = ({
       setError(null);
 
       try {
-        console.log("🔄 Инициализация FFmpeg...");
-
         const ffmpegModule = await import("@ffmpeg/ffmpeg");
         const utilModule = await import("@ffmpeg/util");
 
@@ -145,7 +123,6 @@ const FFmpegVideoExporter = ({
         window.fetchFile = fetchFile;
         setFfmpeg(ffmpegInstance);
         setExportStage("ready");
-        console.log("✅ FFmpeg готов");
       } catch (error) {
         console.error("❌ Ошибка FFmpeg:", error);
         setError(error.message);
@@ -162,9 +139,6 @@ const FFmpegVideoExporter = ({
 
   // Загрузка медиа элементов
   const loadMediaElement = async (item) => {
-    console.log(`📦 Загружаем элемент: "${item.name}"`);
-    console.log(`🔍 Тип элемента: ${item.type}, trackType: ${item.trackType}`);
-
     if (!item.url) {
       console.error(`❌ URL отсутствует для ${item.name}`);
       return null;
@@ -185,11 +159,6 @@ const FFmpegVideoExporter = ({
         item.name?.toLowerCase().includes(".webm") ||
         item.name?.toLowerCase().includes(".mov");
 
-      const isImage = item.type === "images" || 
-        (item.type !== "videos" && item.trackType !== "audio" && !isVideo);
-
-      console.log(`🎯 Определен тип: ${isVideo ? "ВИДЕО" : isImage ? "ИЗОБРАЖЕНИЕ" : "НЕИЗВЕСТНО"} для ${item.name}`);
-
       if (isVideo) {
         const video = document.createElement("video");
         if (!item.url.startsWith("blob:")) {
@@ -199,7 +168,6 @@ const FFmpegVideoExporter = ({
         video.preload = "metadata";
 
         video.onloadedmetadata = () => {
-          console.log(`✅ Видео загружено: ${item.name}, размер: ${video.videoWidth}x${video.videoHeight}`);
           clearTimeout(timeout);
           mediaCache.current.set(cacheKey, video);
           resolve(video);
@@ -220,7 +188,6 @@ const FFmpegVideoExporter = ({
         }
 
         img.onload = () => {
-          console.log(`✅ Изображение загружено: ${item.name}, размер: ${img.naturalWidth}x${img.naturalHeight}`);
           clearTimeout(timeout);
           mediaCache.current.set(cacheKey, img);
           resolve(img);
@@ -237,34 +204,18 @@ const FFmpegVideoExporter = ({
     });
   };
 
-  // Рендеринг кадра С МЕНЬШИМИ ЛОГАМИ
   const renderFrameAtTime = async (ctx, currentTime, width, height) => {
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, width, height);
 
-    // Показываем логи только каждые 5 секунд
-    if (currentTime % 5 < 0.1) {
-      console.log(`🎬 Рендерим кадр на времени ${currentTime.toFixed(1)}s...`);
-    }
-
-    // Активные элементы с ДИАГНОСТИКОЙ
     const activeItems = actualTimelineItems.filter((item) => {
       const startTime = item.startTime || 0;
       const duration = item.duration || 0;
       const endTime = startTime + duration;
       const isActive = currentTime >= startTime && currentTime <= endTime;
 
-      // Показываем только важные кадры (каждые 5 секунд)
-      if (currentTime % 5 < 0.1) {
-        console.log(`   📺 "${item.name}": ${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s → ${isActive ? "✅ АКТИВЕН" : "❌ неактивен"}`);
-      }
       return isActive;
     });
-
-    // Показываем только важные кадры
-    if (currentTime % 5 < 0.1) {
-      console.log(`📋 Найдено активных элементов: ${activeItems.length}/${actualTimelineItems.length}`);
-    }
 
     if (activeItems.length === 0) {
       ctx.fillStyle = "#333333";
@@ -277,8 +228,6 @@ const FFmpegVideoExporter = ({
       ctx.fillText(`Нет активных элементов`, width / 2, height / 2 + 30);
       return;
     }
-
-    // Сортировка: main сначала, overlay потом
     const sortedItems = activeItems.sort((a, b) => {
       const layerOrder = { main: 1, overlay: 2, audio: 0 };
       return (layerOrder[a.trackType] || 1) - (layerOrder[b.trackType] || 1);
@@ -300,7 +249,6 @@ const FFmpegVideoExporter = ({
     }
   };
 
-  // Отрисовка элемента на canvas
   const drawElementOnCanvas = async (ctx, element, item, relativeTime, canvasWidth, canvasHeight) => {
     try {
       if (element.tagName === "VIDEO") {
@@ -335,7 +283,6 @@ const FFmpegVideoExporter = ({
       let drawWidth, drawHeight, drawX, drawY;
 
       if (item.trackType === "main") {
-        // Основное видео - пропорциональное масштабирование
         const canvasRatio = canvasWidth / canvasHeight;
         const elementRatio = elementWidth / elementHeight;
 
@@ -351,15 +298,10 @@ const FFmpegVideoExporter = ({
           drawY = 0;
         }
       } else if (item.trackType === "overlay") {
-        // Overlay с координатами + ДИАГНОСТИКА
-        console.log(`🖼️ РЕНДЕРИМ OVERLAY: ${item.name}`);
-        console.log(`   ID элемента: ${item.id}`);
-        console.log(`   overlayTransforms[${item.id}]:`, overlayTransforms[item.id]);
         
         const overlayCoords = overlayTransforms[item.id];
         
         if (overlayCoords) {
-          // Используем координаты из VideoEditor
           const baseX = 200 + (overlayCoords.x || 0);
           const baseY = 50 + (overlayCoords.y || 0);
           const scale = overlayCoords.scale || 1;
@@ -371,22 +313,16 @@ const FFmpegVideoExporter = ({
           drawY = baseY * scaleY;
           drawWidth = 256 * scale * scaleX;
           drawHeight = 192 * scale * scaleY;
-          
-          console.log(`   ✅ OVERLAY с координатами: pos(${drawX.toFixed(0)}, ${drawY.toFixed(0)}) size(${drawWidth.toFixed(0)}x${drawHeight.toFixed(0)})`);
         } else {
-          // ✅ ПРИНУДИТЕЛЬНЫЕ большие координаты для теста
-          drawX = canvasWidth * 0.6;   // Справа
-          drawY = canvasHeight * 0.1;  // Сверху  
-          drawWidth = canvasWidth * 0.3;   // 30% экрана
-          drawHeight = canvasHeight * 0.3; // 30% экрана
-          
-          console.log(`   🆘 OVERLAY БЕЗ координат - ПРИНУДИТЕЛЬНО БОЛЬШОЙ: pos(${drawX.toFixed(0)}, ${drawY.toFixed(0)}) size(${drawWidth.toFixed(0)}x${drawHeight.toFixed(0)})`);
+          drawX = canvasWidth * 0.6;
+          drawY = canvasHeight * 0.1;
+          drawWidth = canvasWidth * 0.3;
+          drawHeight = canvasHeight * 0.3;
         }
       }
 
       ctx.save();
 
-      // Поворот
       if (item.rotation && item.rotation !== 0) {
         const centerX = drawX + drawWidth / 2;
         const centerY = drawY + drawHeight / 2;
@@ -395,19 +331,14 @@ const FFmpegVideoExporter = ({
         ctx.translate(-centerX, -centerY);
       }
 
-      // Прозрачность
       const opacity = item.opacity !== undefined ? item.opacity : 1;
       ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
 
-      // Качество
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
 
-      // Обработка изображений с альфа-каналом
       if (element.tagName === "IMG") {
         if (item.type === "images" || element.src.includes(".png")) {
-          console.log(`🖼️ Рендерим изображение с возможным альфа-каналом: ${item.name}`);
-
           const tempCanvas = document.createElement("canvas");
           tempCanvas.width = elementWidth;
           tempCanvas.height = elementHeight;
@@ -432,7 +363,6 @@ const FFmpegVideoExporter = ({
     }
   };
 
-  // Создание превью
   const generatePreviewFrame = async () => {
     try {
       const canvas = previewCanvasRef.current;
@@ -458,15 +388,12 @@ const FFmpegVideoExporter = ({
         previewTime = totalDuration / 2;
       }
 
-      console.log(`🖼️ Генерируем превью на времени ${previewTime.toFixed(1)}s`);
-
       await renderFrameAtTime(ctx, previewTime, width, height);
 
       canvas.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
           setPreviewFrame(url);
-          console.log(`✅ Превью создано: ${blob.type}, размер: ${(blob.size / 1024).toFixed(1)}KB`);
         }
       }, "image/png");
     } catch (error) {
@@ -474,14 +401,12 @@ const FFmpegVideoExporter = ({
     }
   };
 
-  // Эффект для создания превью
   useEffect(() => {
     if (isOpen && actualTimelineItems.length > 0 && exportStage === "ready") {
       generatePreviewFrame();
     }
   }, [isOpen, actualTimelineItems, exportSettings.resolution, exportStage]);
 
-  // Подготовка аудио
   const prepareAudioFiles = async () => {
     if (!exportSettings.includeAudio) return [];
 
@@ -510,7 +435,6 @@ const FFmpegVideoExporter = ({
     return audioFiles;
   };
 
-  // Рендеринг всех кадров
   const renderAllFrames = async (duration) => {
     const canvas = canvasRef.current;
     if (!canvas) throw new Error("Canvas не найден");
@@ -519,8 +443,6 @@ const FFmpegVideoExporter = ({
     const [width, height] = exportSettings.resolution.split("x").map(Number);
     canvas.width = width;
     canvas.height = height;
-
-    console.log(`🎞️ Начинаем рендеринг кадров: ${width}x${height}`);
 
     const totalFrames = Math.ceil(duration * exportSettings.fps);
     const frames = [];
@@ -550,9 +472,7 @@ const FFmpegVideoExporter = ({
 
         if (blob) {
           frames.push(blob);
-          // ✅ ДИАГНОСТИКА первых кадров
           if (frame < 5) {
-            // Считаем активные элементы для диагностики
             const activeItemsForDiag = actualTimelineItems.filter((item) => {
               const startTime = item.startTime || 0;
               const duration = item.duration || 0;
@@ -560,12 +480,6 @@ const FFmpegVideoExporter = ({
               return currentTime >= startTime && currentTime <= endTime;
             });
             
-            console.log(`📸 Кадр ${frame}: время=${currentTime.toFixed(1)}s размер=${(blob.size / 1024).toFixed(1)}KB активных=${activeItemsForDiag.length}`);
-            activeItemsForDiag.forEach(item => {
-              if (item.trackType !== "audio") {
-                console.log(`   - ${item.name} (${item.trackType})`);
-              }
-            });
           }
         }
 
@@ -581,11 +495,9 @@ const FFmpegVideoExporter = ({
       }
     }
 
-    console.log(`✅ Рендеринг завершен: ${frames.length} кадров`);
     return frames;
   };
 
-  // Кодирование с FFmpeg
   const encodeWithFFmpeg = async (frames, audioFiles, duration) => {
     if (!window.fetchFile || frames.length === 0) {
       throw new Error("Нет кадров для кодирования");
@@ -597,8 +509,6 @@ const FFmpegVideoExporter = ({
       const hasImages = actualTimelineItems.some(
         (item) => item.type !== "videos" && item.trackType !== "audio"
       );
-
-      console.log(`📦 Кодируем ${frames.length} кадров, содержат изображения: ${hasImages}`);
 
       for (let i = 0; i < frames.length; i++) {
         const frameData = await window.fetchFile(frames[i]);
@@ -625,12 +535,10 @@ const FFmpegVideoExporter = ({
 
       setExportProgress(70);
 
-      // ✅ ПРАВИЛЬНАЯ FFmpeg команда с обрезкой аудио
       const args = [
         "-framerate", exportSettings.fps.toString()
       ];
 
-      // Входные файлы
       if (hasImages) {
         args.push("-i", "frame_%06d.png");
       } else {
@@ -639,15 +547,11 @@ const FFmpegVideoExporter = ({
 
       if (audioFiles.length > 0) {
         args.push("-i", "audio_0.mp3");
-        // Маппинг потоков
-        args.push("-map", "0:v");        // Видео из первого входа
-        args.push("-map", "1:a");        // Аудио из второго входа
+        args.push("-map", "0:v");
+        args.push("-map", "1:a"); 
       }
 
-      // ТОЧНАЯ длительность для ВСЕГО видео
       args.push("-t", duration.toString());
-
-      // Видео настройки
       args.push(
         "-c:v", "libx264",
         "-preset", "ultrafast",
@@ -661,7 +565,6 @@ const FFmpegVideoExporter = ({
         "-refs", "1"
       );
 
-      // Аудио настройки (если есть)
       if (audioFiles.length > 0) {
         args.push(
           "-c:a", "aac",
@@ -670,16 +573,12 @@ const FFmpegVideoExporter = ({
           "-ac", "2",
           "-strict", "-2"
         );
-        console.log(`🎵 Аудио ОБРЕЗАЕТСЯ с ${audioFiles[0].duration || 'неизвестно'}s до ${duration}s`);
       }
 
-      // Финальные настройки
       args.push(
         "-movflags", "+faststart",
         "output.mp4"
       );
-
-      console.log("🔧 Команда FFmpeg:", args.join(" "));
 
       await ffmpeg.exec(args);
 
@@ -699,7 +598,6 @@ const FFmpegVideoExporter = ({
     }
   };
 
-  // Очистка файлов
   const cleanupTempFiles = async (frameCount, audioCount) => {
     for (let i = 0; i < frameCount; i++) {
       try {
@@ -721,7 +619,6 @@ const FFmpegVideoExporter = ({
     } catch (e) {}
   };
 
-  // Главная функция экспорта С ДИАГНОСТИКОЙ
   const startExport = async () => {
     if (!ffmpeg || isExporting || actualTimelineItems.length === 0) return;
 
@@ -731,39 +628,8 @@ const FFmpegVideoExporter = ({
     setError(null);
 
     try {
-      console.log("🚀 ПОЛНАЯ ДИАГНОСТИКА ЭКСПОРТА:");
-      console.log("actualTimelineItems:", actualTimelineItems);
-      console.log("overlayTransforms:", overlayTransforms);
-      
-      // Детальная диагностика элементов С АНАЛИЗОМ ВРЕМЕНИ
-      console.log("\n📊 АНАЛИЗ ЭЛЕМЕНТОВ TIMELINE:");
-      actualTimelineItems.forEach((item, index) => {
-        const start = item.startTime || 0;
-        const duration = item.duration || 0;
-        const end = start + duration;
-        console.log(`${index + 1}. "${item.name}"`);
-        console.log(`   Тип: ${item.type} | Трек: ${item.trackType}`);
-        console.log(`   Время: ${start}s → ${end.toFixed(1)}s (длительность: ${duration}s)`);
-        console.log(`   URL: ${item.url ? 'есть' : 'НЕТ'}`);
-        if (item.trackType === "overlay") {
-          console.log(`   Overlay координаты: ${overlayTransforms[item.id] ? 'есть' : 'НЕТ'}`);
-        }
-      });
-      
-      const visualItems = actualTimelineItems.filter(item => 
-        item.trackType === "main" || item.trackType === "overlay"
-      );
-      const maxVisualTime = visualItems.length > 0 ? Math.max(...visualItems.map(item => (item.startTime || 0) + (item.duration || 0))) : 0;
-      console.log(`\n⏱️ Максимальное время визуального контента: ${maxVisualTime}s`);
-      console.log(`⏱️ Будем экспортировать: ${Math.min(maxVisualTime, 30)}s\n`);
-
-      console.log(`🎬 Начинаем экспорт с максимальной совместимостью`);
-
       const totalDuration = calculateTotalDuration();
-      // ✅ НЕ ограничиваем дополнительно - уже ограничено в calculateTotalDuration
       const actualDuration = totalDuration;
-      
-      console.log(`📐 ФИНАЛЬНАЯ длительность экспорта: ${actualDuration}s`);
 
       setExportStage("rendering_frames");
       const frames = await renderAllFrames(actualDuration);
@@ -772,11 +638,6 @@ const FFmpegVideoExporter = ({
       setExportStage("processing_audio");
       const audioFiles = await prepareAudioFiles();
       setExportProgress(60);
-      
-      console.log(`🎵 Подготовленных аудио файлов: ${audioFiles.length}`);
-      audioFiles.forEach((audio, i) => {
-        console.log(`  Аудио ${i + 1}: ${audio.name} размер:${(audio.blob.size / 1024).toFixed(1)}KB`);
-      });
 
       setExportStage("encoding");
       const videoBlob = await encodeWithFFmpeg(frames, audioFiles, actualDuration);
@@ -789,14 +650,7 @@ const FFmpegVideoExporter = ({
 
       setExportStage("completed");
       
-      // ✅ ФИНАЛЬНАЯ ДИАГНОСТИКА
-      console.log(`✅ ЭКСПОРТ ЗАВЕРШЕН!`);
-      console.log(`📹 Размер видео: ${(videoBlob.size / 1024 / 1024).toFixed(2)}MB`);
-      console.log(`⏱️ Длительность: ${actualDuration}s`);
-      console.log(`🎞️ Кадров: ${frames.length}`);
-      console.log(`🎵 Аудио: ${audioFiles.length > 0 ? "включено" : "нет"}`);
-      console.log(`🖼️ Overlay: ${actualTimelineItems.filter(i => i.trackType === "overlay").length} элементов`);
-      
+     
       setTimeout(() => {
         setExportStage("ready");
         setExportProgress(0);

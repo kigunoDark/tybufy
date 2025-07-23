@@ -5,18 +5,10 @@ import ContentStudio from "../ContentStudio";
 import { cleanScript } from "../helpers/cleanScript";
 import { TeleprompterModal } from "../ui/TeleprompterModal";
 
-import {
-  X,
-  Sparkles,
-  Zap,
-  Brain,
-  Heart,
-  Star,
-  Target,
-} from "lucide-react";
+import { X, Sparkles, Zap, Brain, Heart, Star, Target } from "lucide-react";
 
 const apiClient = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -61,15 +53,12 @@ const VideoEditorApp = () => {
   const [aiPrompt, setAiPrompt] = useState("");
   const [showAiEditor, setShowAiEditor] = useState(false);
   const [isGeneratingText, setIsGeneratingText] = useState(false);
-  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
-  const [isGeneratingKeyPoints, setIsGeneratingKeyPoints] = useState(false);
   const [audioMethod, setAudioMethod] = useState("ai");
   const [recordedAudio, setRecordedAudio] = useState(null);
   const [showAudioEditor, setShowAudioEditor] = useState(false);
   const [assessment, setAssessment] = useState({});
   const [contentType, setContentType] = useState("lifestyle");
-  const [assessmentLoading, setAssessmentLoading] = useState(false);
-  const [isExtendingScript, setIsExtendingScript] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("english");
   const [mediaLibrary, setMediaLibrary] = useState({
@@ -94,7 +83,7 @@ const VideoEditorApp = () => {
   useEffect(() => {
     (async () => {
       if (script.length && isAuthenticated) {
-        setAssessmentLoading(true);
+        setLoading(true);
         try {
           const res = await apiClient.post("/api/script/quality", { script });
           setAssessment(res.data.data.quality);
@@ -105,70 +94,11 @@ const VideoEditorApp = () => {
             video_duration: Math.ceil(script.length / 150),
           });
         } finally {
-          setAssessmentLoading(false);
+          setLoading(false);
         }
       }
     })();
   }, [script, isAuthenticated]);
-
-  const saveRecordingToLibrary = async (recordingData) => {
-    console.log("🔍 Сохраняем запись:", recordingData);
-
-    const { blob, type, duration } = recordingData;
-
-    let fileExtension = "webm";
-    if (blob.type.includes("mp4")) {
-      fileExtension = "mp4";
-    } else if (blob.type.includes("webm")) {
-      fileExtension = "webm";
-    }
-
-    const mediaType = type === "video" ? "videos" : "audios";
-    const fileName = `${type}_запись_${Date.now()}.${fileExtension}`;
-
-    try {
-      const url = URL.createObjectURL(blob);
-
-      console.log("📹 Создаем файл:", {
-        name: fileName,
-        type: mediaType,
-        mimeType: blob.type,
-        size: blob.size,
-        url: url,
-      });
-
-      const fileData = {
-        id: Date.now() + Math.random(),
-        name: fileName,
-        type: mediaType,
-        mediaType: mediaType,
-        mimeType: blob.type,
-        size: blob.size,
-        duration: duration || 0,
-        width: type === "video" ? 1280 : 0,
-        height: type === "video" ? 720 : 0,
-        createdAt: new Date().toISOString(),
-        source: "teleprompter",
-        url: url,
-        blob: blob,
-      };
-
-      setMediaLibrary((prev) => {
-        const newLibrary = {
-          ...prev,
-          [mediaType]: [...(prev[mediaType] || []), fileData],
-        };
-        console.log("📚 Обновленная медиабиблиотека:", newLibrary);
-        return newLibrary;
-      });
-
-      console.log(`✅ Запись сохранена: ${fileName}`);
-      return true;
-    } catch (error) {
-      console.error("❌ Ошибка сохранения:", error);
-      return false;
-    }
-  };
 
   const handleDemoLogin = async () => {
     try {
@@ -240,7 +170,7 @@ const VideoEditorApp = () => {
   const generateKeyPoints = async () => {
     if (!topic.trim() || !isAuthenticated) return;
 
-    setIsGeneratingKeyPoints(true);
+    setLoading(true);
 
     try {
       const response = await apiClient.post("/api/script/key-points", {
@@ -250,24 +180,48 @@ const VideoEditorApp = () => {
       });
 
       const keyPoints = response.data.data;
-      const newKeyPoints = keyPoints.points || keyPoints;
+      let newKeyPoints = keyPoints.points || keyPoints;
 
       if (Array.isArray(newKeyPoints) && newKeyPoints.length > 0) {
-        setKeyPoints(newKeyPoints);
+        if (
+          newKeyPoints[0] === "```json" &&
+          newKeyPoints[newKeyPoints.length - 1] === "```"
+        ) {
+          const realPoints = newKeyPoints
+            .slice(2, -2)
+            .map((point) => {
+              return point.replace(/^"/, "").replace(/",?$/, "").trim();
+            })
+            .filter((point) => point.length > 0);
+
+          newKeyPoints = realPoints;
+        } else if (
+          newKeyPoints.some(
+            (point) => typeof point === "string" && point.startsWith('"')
+          )
+        ) {
+          newKeyPoints = newKeyPoints.map((point) =>
+            point.replace(/^"/, "").replace(/",?$/, "").trim()
+          );
+        }
+      }
+
+      if (Array.isArray(newKeyPoints) && newKeyPoints.length > 0) {
+        setKeyPoints(newKeyPoints.slice(0, 10));
       } else {
         throw new Error("Неверный формат ответа от сервера");
       }
     } catch (error) {
       console.error("Generation error:", error);
     } finally {
-      setIsGeneratingKeyPoints(false);
+      setLoading(false);
     }
   };
 
   const generateScript = async () => {
     if (!topic.trim() || !isAuthenticated) return;
 
-    setIsGeneratingScript(true);
+    setLoading(true);
     const validKeyPoints = keyPoints.filter((point) => point.trim() !== "");
 
     try {
@@ -287,14 +241,14 @@ const VideoEditorApp = () => {
         "Ошибка при генерации скрипта. Проверьте подключение к серверу."
       );
     } finally {
-      setIsGeneratingScript(false);
+      setLoading(false);
     }
   };
 
   const extendScript = async () => {
     if (!script.trim() || !topic.trim() || !isAuthenticated) return;
 
-    setIsExtendingScript(true);
+    setLoading(true);
 
     try {
       const res = await apiClient.post("/api/script/extend", {
@@ -308,10 +262,68 @@ const VideoEditorApp = () => {
     } catch (error) {
       console.error("Ошибка при расширении скрипта:", error);
     } finally {
-      setIsExtendingScript(false);
+      setLoading(false);
     }
   };
 
+const handleTeleprompterSave = async (recordingData) => {
+  try {
+    const libraryType = recordingData.type === "video" ? "videos" : "audios";
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const extension = recordingData.type === "video" ? "webm" : "webm";
+    const fileName = `teleprompter-${recordingData.type}-${timestamp}.${extension}`;
+
+    const file = new File([recordingData.blob], fileName, {
+      type:
+        recordingData.blob.type ||
+        (recordingData.type === "video" ? "video/webm" : "audio/webm"),
+      lastModified: Date.now(),
+    });
+
+    const fileData = {
+      id: Date.now() + Math.random(),
+      name: fileName,
+      type: libraryType,
+      mimeType: file.type,
+      mediaType: libraryType,
+      size: file.size,
+      blob: file,
+      duration: recordingData.duration || 0,
+      width: 0,
+      height: 0,
+      createdAt: recordingData.timestamp || new Date().toISOString(),
+      source: "teleprompter",
+      url: URL.createObjectURL(file),
+    };
+
+    // ✅ ДОБАВИМ: Попытаемся сохранить в IndexedDB
+    try {
+      const request = indexedDB.open('MVP_VideoEditor', 1);
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['files'], 'readwrite');
+        const store = transaction.objectStore('files');
+        
+        const dbData = { ...fileData };
+        delete dbData.url;
+      
+      };
+    } catch (dbError) {
+      console.warn('⚠️ Не удалось сохранить в IndexedDB:', dbError);
+    }
+    setMediaLibrary((prev) => ({
+      ...prev,
+      [libraryType]: [...(prev[libraryType] || []), fileData],
+    }));
+
+    console.log(`✅ Файл из телесуфлера добавлен в библиотеку: ${fileName}`);
+    return true;
+  } catch (error) {
+    console.error("❌ Ошибка сохранения записи из телесуфлера:", error);
+    return false;
+  }
+};
   const handleTextSelection = () => {
     const selection = window.getSelection();
     const selectedText = selection.toString().trim();
@@ -350,18 +362,67 @@ const VideoEditorApp = () => {
     }
   };
 
-  const generateAudio = async () => {
-    if (!isAuthenticated) return;
+const generateAudio = async () => {
+  if (!isAuthenticated || !script.trim()) {
+    console.warn("Нет авторизации или пустой скрипт");
+    return;
+  }
 
-    try {
+  setLoading(true);
+  setAudioUrl("");
+
+  try {
+    const response = await apiClient.post("/api/audio/generate", {
+      text: script,
+      voiceId: 'JBFqnCBsd6RMkjVDRZzb', // ElevenLabs voice ID
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.8,
+      },
+      output_format: "mp3_44100_128"
+    });
+
+    if (response.data.success) {
+      const audioData = response.data.data;
+      
+      if (audioData.audioUrl) {
+        // Прямая ссылка на аудио
+        setAudioUrl(audioData.audioUrl);
+      } else if (audioData.audioData) {
+        // Base64 данные
+        const audioBlob = new Blob(
+          [Uint8Array.from(atob(audioData.audioData), c => c.charCodeAt(0))], 
+          { type: 'audio/mpeg' }
+        );
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioUrl(audioUrl);
+      }
+      
+      setCurrentStep(4);
+      console.log("✅ Аудио успешно сгенерировано");
+      
+    } else {
+      throw new Error(response.data.error || "Ошибка сервера");
+    }
+    
+  } catch (error) {
+    console.error("❌ Ошибка при генерации аудио:", error);
+    
+    setAuthError(
+      `Не удалось сгенерировать аудио: ${error.response?.data?.error || error.message}`
+    );
+    
+    // Fallback для демо
+    if (process.env.NODE_ENV === 'development') {
       setTimeout(() => {
-        setAudioUrl("generated");
+        setAudioUrl("demo-generated");
         setCurrentStep(4);
       }, 2000);
-    } catch (error) {
-      console.error("Ошибка при генерации аудио:", error);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleTeleprompterRecording = (blob, type) => {
     if (type === "video") {
@@ -483,9 +544,6 @@ const VideoEditorApp = () => {
           setDuration={setDuration}
           script={script}
           setScript={setScript}
-          isGeneratingKeyPoints={isGeneratingKeyPoints}
-          isGeneratingScript={isGeneratingScript}
-          isExtendingScript={isExtendingScript}
           isAuthenticated={isAuthenticated}
           audioMethod={audioMethod}
           setAudioMethod={setAudioMethod}
@@ -494,8 +552,8 @@ const VideoEditorApp = () => {
           setShowAudioEditor={setShowAudioEditor}
           audioUrl={audioUrl}
           assessment={assessment}
-          assessmentLoading={assessmentLoading}
-          currentStep={currentStep} // Now being used
+          loading={loading}
+          currentStep={currentStep} 
           handleTextSelection={handleTextSelection}
           generateKeyPoints={generateKeyPoints}
           generateScript={generateScript}
@@ -511,23 +569,21 @@ const VideoEditorApp = () => {
           <div className="absolute inset-y-0 -left-2 -right-2 bg-blue-400/10 transition-colors duration-300"></div>
         </div>
 
-        {/* Right Panel */}
         <div
           className={`bg-gradient-to-br from-white/70 to-slate-50/70 backdrop-blur-xl p-6 flex flex-col transition-all duration-300 ease-in-out ${
-            isLeftPanelCollapsed ? "w-[92%] min-w-[92%]" : "w-[90%] min-w-[69%]"
+            isLeftPanelCollapsed ? "w-[95%] min-w-[92%]" : "w-[74%] min-w-[69%]"
           }`}
         >
           <VideoEditor
             mediaLibrary={mediaLibrary}
             setMediaLibrary={setMediaLibrary}
-            videoFile={videoFile} // Now being used
+            videoFile={videoFile}
             videoUrl={videoUrl}
-            showAudioEditor={showAudioEditor} // Now being used
+            showAudioEditor={showAudioEditor}
           />
         </div>
       </div>
 
-      {/* AI Editor Modal */}
       {showAiEditor && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 w-full max-w-3xl max-h-[85vh] overflow-y-auto border border-slate-200/50 shadow-2xl">
@@ -591,7 +647,7 @@ const VideoEditorApp = () => {
                   Cancel
                 </button>
               </div>
-              {/* Quick Prompts */}
+
               <div>
                 <p className="text-gray-700 font-semibold text-lg mb-4">
                   ⚡ Quick commands:
@@ -626,7 +682,7 @@ const VideoEditorApp = () => {
         onClose={() => setShowTeleprompter(false)}
         script={script}
         onRecordingComplete={handleTeleprompterRecording}
-        onSaveToLibrary={saveRecordingToLibrary}
+        onSaveToLibrary={handleTeleprompterSave}
       />
     </div>
   );

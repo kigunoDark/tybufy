@@ -21,9 +21,6 @@ function getOpenAIClient() {
     openaiClient = new OpenAI({
       apiKey: apiKey,
     });
-
-    console.log("✅ OpenAI client initialized successfully");
-    console.log(`🔑 Using API key: ${apiKey.substring(0, 7)}...${apiKey.slice(-4)}`);
   }
 
   return openaiClient;
@@ -136,8 +133,6 @@ async function generateThumbnails(
       console.warn(`❌ Image ${error.imageIndex}: ${error.error}`);
     });
   }
-
-  console.log(`🎉 Successfully generated ${thumbnails.length}/${count} REAL AI thumbnails!`);
   
   return {
     thumbnails,
@@ -146,17 +141,14 @@ async function generateThumbnails(
       requested: count,
       generated: thumbnails.length,
       failed: errors.length,
-      allReal: true // Подтверждаем что все изображения реальные
+      allReal: true
     }
   };
 }
 
-/**
- * Добавляет вариации в промпт для разнообразия
- */
 function addPromptVariation(basePrompt, index) {
   const variations = [
-    "", // Оригинальный промпт
+    "",
     ", with dynamic lighting and vibrant colors",
     ", with creative composition and engaging visual elements",
     ", with professional photography style and sharp details",
@@ -196,25 +188,15 @@ function addPromptVariation(basePrompt, index) {
   return modifiedPrompt;
 }
 
-/**
- * Создает промпт для DALL-E (ОБНОВЛЕННАЯ ВЕРСИЯ)
- */
 function createThumbnailPrompt(settings, mode) {
   let prompt = "";
   let styleContext = "";
 
-  // Базовый стиль
   if (mode === "styles" && settings.style) {
     const stylePrompts = {
       "youtube-gaming": function (settings) {
-        // АНАЛИЗ ВАШИХ ПРИМЕРОВ:
-        // 1. Outlast Trials - реалистичные лица, хоррор освещение, крупный текст
-        // 2. Elden Ring - 3D рендеры, объемный текст, фантазийные персонажи
-        // 3. Split design - разделенная композиция, контрастные цвета
-        
         let basePrompt = `Professional YouTube gaming thumbnail, 3D rendered style, photorealistic character models. `;
-        
-        // РЕАЛИСТИЧНЫЕ ПЕРСОНАЖИ как в примерах
+х
         if (settings.objectDescriptions && settings.objectDescriptions.length > 0) {
           basePrompt += `Characters: realistic 3D rendered human figures with detailed facial features, `;
           basePrompt += `positioned on right side of frame, dramatic character lighting. `;
@@ -223,7 +205,6 @@ function createThumbnailPrompt(settings, mode) {
           basePrompt += `positioned center-right, professional 3D modeling quality like video game characters. `;
         }
 
-        // ЦВЕТОВАЯ СХЕМА И ОСВЕЩЕНИЕ как в примерах
         const dramaticLighting = [
           "dramatic green and red horror lighting like Outlast Trials, dark atmospheric background",
           "orange and yellow warm lighting like Elden Ring, fantasy mystical background", 
@@ -234,7 +215,6 @@ function createThumbnailPrompt(settings, mode) {
         const selectedLighting = dramaticLighting[Math.floor(Math.random() * dramaticLighting.length)];
         basePrompt += `Lighting: ${selectedLighting}. `;
 
-        // ОЧЕНЬ ВАЖНО: ОБЪЕМНЫЙ 3D ТЕКСТ как в примерах
         if (settings.text) {
           basePrompt += `TEXT - CRITICAL: Display "${settings.text}" as large 3D volumetric text with these exact specifications: `;
           basePrompt += `- Size: text takes 35-45% of image width, positioned on left side or bottom area `;
@@ -245,26 +225,20 @@ function createThumbnailPrompt(settings, mode) {
           basePrompt += `- Quality: professional 3D text rendering like AAA video game logos. `;
         }
 
-        // ТЕХНИЧЕСКОЕ КАЧЕСТВО
         basePrompt += `Technical specs: 16:9 aspect ratio, 1792x1024 resolution, `;
         basePrompt += `high-quality 3D rendering like Unreal Engine or Unity game graphics, `;
         basePrompt += `professional lighting setup, sharp details, high contrast for mobile viewing. `;
 
-        // СТИЛЬ РЕНДЕРИНГА - КЛЮЧЕВОЕ!
         basePrompt += `Rendering style: 3D computer graphics, video game quality renders, `;
         basePrompt += `NOT digital art, NOT painted style, NOT cartoon, NOT anime. `;
         basePrompt += `Think: AAA video game promotional materials, 3D character models, realistic game renders. `;
 
-        // КОМПОЗИЦИЯ как в примерах
         basePrompt += `Composition: dramatic cinematic layout, rule of thirds, `;
         basePrompt += `character(s) on right, large text on left or bottom, `;
         basePrompt += `professional YouTube thumbnail optimization. `;
 
-        // СТРОГИЕ ЗАПРЕТЫ
         basePrompt += `AVOID: flat 2D art, painting style, cartoon graphics, anime style, `;
         basePrompt += `abstract designs, low-poly models, sketch style, watercolor effects. `;
-
-        console.log("🎮 Exact style prompt generated:", basePrompt.substring(0, 400) + "...");
         return basePrompt;
       },
 
@@ -283,7 +257,7 @@ function createThumbnailPrompt(settings, mode) {
       "youtube-business": "Professional business YouTube thumbnail with sophisticated colors (#667eea, #764ba2, #f093fb), charts, graphs, corporate style, success and achievement vibes, office environment or city skyline",
     };
 
-    // Проверяем, является ли stylePrompts[settings.style] функцией
+
     if (typeof stylePrompts[settings.style] === 'function') {
       styleContext = stylePrompts[settings.style](settings);
     } else {
@@ -299,15 +273,11 @@ function createThumbnailPrompt(settings, mode) {
 
   prompt = styleContext;
 
-  // Добавляем технические требования
   prompt += ". YouTube thumbnail optimized for maximum click-through rate: 16:9 aspect ratio (1280x720), high contrast for small preview size, attention-grabbing composition with rule of thirds, professional quality with sharp details, vibrant colors that pop on mobile screens, designed to stand out in YouTube feed";
 
   return prompt;
 }
 
-/**
- * Анализирует изображение с помощью GPT-4 Vision
- */
 async function analyzeReferenceImage(imageUrl) {
   try {
     const openai = getOpenAIClient();
@@ -342,9 +312,6 @@ async function analyzeReferenceImage(imageUrl) {
   }
 }
 
-/**
- * Тестирует соединение с OpenAI API
- */
 async function testOpenAIConnection() {
   try {
     console.log("🧪 Testing OpenAI API connection...");
@@ -369,6 +336,5 @@ module.exports = {
   createThumbnailPrompt,
   analyzeReferenceImage,
   addPromptVariation,
-  testOpenAIConnection, // Для тестирования API
-  // НЕ экспортируем generateMockThumbnails!
+  testOpenAIConnection,
 };

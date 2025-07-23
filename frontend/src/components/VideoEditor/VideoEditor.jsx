@@ -641,7 +641,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     }
   };
 
-  // Эффекты для управления overlays
   useEffect(() => {
     if (isDraggingOverlay || isResizingOverlay) {
       document.addEventListener("mousemove", handleOverlayMouseMove);
@@ -661,7 +660,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
     handleOverlayMouseUp,
   ]);
 
-  // Основные эффекты
   useEffect(() => {
     const content = getCurrentTimelineContent();
 
@@ -860,7 +858,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
 
   return (
     <div className="flex h-screen w-full gap-4 p-4 bg-gray-100 overflow-hidden">
-      {/* Media Library Component */}
       <MediaLibrary
         mediaLibrary={mediaLibrary}
         setMediaLibrary={setMediaLibrary}
@@ -870,12 +867,11 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
         setDraggedItem={setDraggedItem}
         isDragging={isDragging}
         setIsDragging={setIsDragging}
-        addToTimeline={handleMediaLibraryClick} // ✅ ИСПОЛЬЗУЕМ УМНУЮ ФУНКЦИЮ
+        addToTimeline={handleMediaLibraryClick}
         formatTime={formatTime}
       />
 
       <div className="flex-1 flex flex-col gap-4 min-w-0 overflow-hidden">
-        {/* Video Preview */}
         <div
           ref={videoContainerRef}
           className="flex-1 bg-black rounded-2xl relative overflow-hidden shadow-sm min-h-0"

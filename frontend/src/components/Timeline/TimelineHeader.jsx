@@ -26,6 +26,7 @@ export const TimelineHeader = ({
   zoomIn,
   zoomOut,
   resetZoom,
+  timelineItems = [], // ✅ ДОБАВИТЬ ЭТОТ ПРОП
 }) => {
   const getStatusMessage = () => {
     if (draggedItem) {
@@ -63,22 +64,17 @@ export const TimelineHeader = ({
 
   const handleDownloadOpen = () => {
     setShowExportModal(true);
-    console.log("Hey")
   };
+
+  // ✅ Проверяем есть ли элементы в таймлайне
+  const hasTimelineItems = timelineItems && timelineItems.length > 0;
+
   return (
     <div className="bg-gray-50 p-4 border-b border-gray-200 space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-gray-800 font-semibold flex items-center space-x-2">
           <Film size={18} />
           <span>Timeline Pro</span>
-          <button
-            onClick={handleDownloadOpen}
-            className="p-2 rounded-full hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors group"
-            title="Экспорт видео"
-          >
-            <Download size={20} />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity animate-pulse"></span>
-          </button>
           <span className="text-blue-600 text-sm">{getStatusMessage()}</span>
         </h4>
 
@@ -110,6 +106,33 @@ export const TimelineHeader = ({
             </button>
             <HelpButtonWithTooltip />
           </div>
+          
+          {/* ✅ Показываем кнопку только если есть элементы в таймлайне */}
+          {hasTimelineItems && (
+            <button
+              onClick={handleDownloadOpen}
+              className="relative px-3 py-1.5 bg-gradient-to-r from-slate-600 to-blue-600 hover:from-slate-700 hover:to-blue-700 text-white font-semibold text-xs rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse hover:animate-none group overflow-hidden"
+              title="Экспорт готового видео"
+            >
+              {/* Анимированный фон в цветах сайта */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-slate-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              <div className="relative flex items-center gap-1.5">
+                <Download 
+                  size={14} 
+                  className="group-hover:translate-y-0.5 transition-transform duration-200" 
+                />
+                <span className="tracking-wide">Export</span>
+                <div className="w-1 h-1 bg-white rounded-full opacity-75 animate-pulse"></div>
+              </div>
+              
+              {/* Минимальные блестки */}
+              <div 
+                className="absolute top-0.5 right-2 w-0.5 h-0.5 bg-white rounded-full opacity-60 animate-ping" 
+                style={{ animationDelay: "0.5s" }}
+              ></div>
+            </button>
+          )}
         </div>
       </div>
 

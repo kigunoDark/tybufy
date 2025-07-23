@@ -97,7 +97,7 @@ const Footer = () => {
               <span className="text-sm text-gray-400">Follow us:</span>
               <div className="flex items-center space-x-3">
                 <Link
-                  to="https://www.linkedin.com/company/your-company "
+                  to="https://www.linkedin.com/company/tubehi "
                   target="_blank"
                   rel="linkedinPage"
                   className="w-8 h-8 bg-gray-700 hover:bg-slate-600 rounded-full flex items-center justify-center transition-colors"

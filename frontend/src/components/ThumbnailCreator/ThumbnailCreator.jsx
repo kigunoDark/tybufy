@@ -11,9 +11,11 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 const ThumbnailCreator = ({ isOpen, onClose, exportSettings }) => {
   const [activeTab, setActiveTab] = useState("styles");
+  const { API_BASE_URL } = useAuth();
   const [selectedStyle, setSelectedStyle] = useState(null);
   const [customData, setCustomData] = useState({
     text: "",
@@ -223,7 +225,6 @@ const ThumbnailCreator = ({ isOpen, onClose, exportSettings }) => {
       return;
     }
 
-
     setIsGenerating(true);
     setGeneratedThumbnails([]);
     setSelectedThumbnail(null);
@@ -269,7 +270,7 @@ const ThumbnailCreator = ({ isOpen, onClose, exportSettings }) => {
             formData.append("image", blob, "reference.jpg");
 
             const analysisResponse = await fetch(
-              "http://localhost:5000/api/thumbnails/analyze-image",
+              `${API_BASE_URL}/api/thumbnails/analyze-image`,
               {
                 method: "POST",
                 headers: {
@@ -294,10 +295,8 @@ const ThumbnailCreator = ({ isOpen, onClose, exportSettings }) => {
         setProgress(40);
         setCurrentStep("Connecting to AI service...");
 
-        console.log("🎨 Sending generation request:", requestData);
-
         const response = await fetch(
-          "http://localhost:5000/api/thumbnails/generate",
+          `${API_BASE_URL}/api/thumbnails/generate`,
           {
             method: "POST",
             mode: "cors",
@@ -318,7 +317,7 @@ const ThumbnailCreator = ({ isOpen, onClose, exportSettings }) => {
 
         if (!response.ok) {
           if (response.status === 429) {
-            throw new Error("RATE_LIMIT"); 
+            throw new Error("RATE_LIMIT");
           } else if (response.status === 401) {
             throw new Error("Authentication failed. Please log in again.");
           } else if (response.status === 500) {
@@ -334,9 +333,7 @@ const ThumbnailCreator = ({ isOpen, onClose, exportSettings }) => {
           throw new Error(data.error || "Generation failed");
         }
 
-   
         const { thumbnails } = data.data.thumbnails || data.data?.thumbnails;
-
 
         if (!thumbnails || !Array.isArray(thumbnails)) {
           throw new Error("Invalid response format: thumbnails not found");
@@ -476,7 +473,6 @@ const ThumbnailCreator = ({ isOpen, onClose, exportSettings }) => {
       }, 1000);
     }
   };
-
 
   const addObjectImage = (event) => {
     const file = event.target.files[0];

@@ -101,41 +101,59 @@ const thumbnailLimiter = rateLimit({
   },
 });
 
+
 const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || "http://localhost:3000",
-      "http://localhost:3000",
-      "http://localhost:3001",
-    ];
-
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "https://tybify.vercel.app",
+    "https://tubehi.com",
+    "https://www.tubehi.com",
+    "https://app.tubehi.com",
+    "https://tubifyai.vercel.app",
+    "https://tubifyai-gqk6oa1l0-kigunodarks-projects.vercel.app"
+  ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+  optionsSuccessStatus: 200
 };
-
+app.set('trust proxy', 1)
 app.use(cors(corsOptions));
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    console.log("🔄 CORS preflight request:", req.path);
-    return res.status(200).end();
-  }
-  next();
-});
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+app.use((req, res, next) => {
+ const allowedOrigins = [
+    "https://tybify.vercel.app",
+    "https://tubehi.com",
+    "https://www.tubehi.com",
+    "https://app.tubehi.com",
+    "http://localhost:3000",
+    "http://localhost:3001"
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 app.use("/api", (req, res, next) => {
-  console.log(`📡 ${req.method} ${req.path}`);
   if (req.path.includes("/thumbnails/")) {
     console.log("📋 Content-Type:", req.get("Content-Type"));
     console.log("📦 Body present:", !!req.body);
@@ -144,17 +162,13 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-app.options("*", cors(corsOptions));
-
 const trackThumbnailUsage = async (req, res, next) => {
   try {
     if (req.method === "OPTIONS") {
-      console.log("🔄 Skipping OPTIONS request in trackThumbnailUsage");
       return next();
     }
 
     if (!req.body) {
-      console.log("⚠️ req.body is undefined in trackThumbnailUsage");
       return next();
     }
 
@@ -166,7 +180,6 @@ const trackThumbnailUsage = async (req, res, next) => {
       premium: { thumbnailsGenerated: -1 },
     };
 
-    
     const userLimits = limits[user.subscription];
     if (
       userLimits.thumbnailsGenerated !== -1 &&
@@ -183,7 +196,6 @@ const trackThumbnailUsage = async (req, res, next) => {
     req.userLimits = userLimits;
     next();
   } catch (error) {
-    console.error("trackThumbnailUsage error:", error);
     next(error);
   }
 };
@@ -214,7 +226,6 @@ app.post(
   async (req, res) => {
     try {
       if (!req.body) {
-        console.error("❌ req.body is undefined");
         return res.status(400).json({
           success: false,
           error:
@@ -235,15 +246,6 @@ app.post(
         objectCount,
         referenceImageAnalysis,
       } = req.body;
-
-      console.log("🎨 Thumbnail generation request:", {
-        mode,
-        style,
-        text,
-        objectCount,
-        hasDescription: !!description,
-        hasReferenceAnalysis: !!referenceImageAnalysis,
-      });
 
       if (!mode) {
         return res.status(400).json({
@@ -281,7 +283,6 @@ app.post(
       }
 
       const prompt = createThumbnailPrompt(settings, mode);
-      console.log("📝 Generated prompt:", prompt.substring(0, 150) + "...");
 
       const thumbnails = await generateThumbnails(prompt, 5);
 
@@ -295,8 +296,6 @@ app.post(
       await User.findByIdAndUpdate(req.user._id, {
         $inc: { "usage.thumbnailsGenerated": 1 },
       });
-
-      console.log(`✅ Successfully generated ${thumbnails.length} thumbnails`);
 
       res.json({
         success: true,
@@ -313,7 +312,6 @@ app.post(
         },
       });
     } catch (error) {
-      console.error("❌ Thumbnail generation error:", error);
 
       if (
         error.message.includes("Rate limit") ||
@@ -380,7 +378,6 @@ app.post(
         },
       });
     } catch (error) {
-      console.error("Image analysis error:", error);
       res.status(500).json({
         success: false,
         error: error.message || "Failed to analyze image",
@@ -416,7 +413,6 @@ app.get("/api/thumbnails/stats", authenticateToken, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get thumbnail stats error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to get thumbnail statistics",
@@ -436,8 +432,6 @@ app.post(
           error: "No object images provided",
         });
       }
-
-      console.log(`📷 Processing ${req.files.length} object images...`);
 
       const processedObjects = [];
 
@@ -461,7 +455,6 @@ app.post(
             optimized: true,
           });
         } catch (error) {
-          console.error(`Error processing object ${i + 1}:`, error);
           continue;
         }
       }
@@ -484,12 +477,14 @@ app.post(
   }
 );
 
-const dirs = ["uploads", "output"];
-dirs.forEach((dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
+if (process.env.NODE_ENV !== "production") {
+  const dirs = ["uploads", "output"];
+  dirs.forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+}
 
 app.use(
   helmet({
@@ -570,7 +565,7 @@ const authLimiter = rateLimit({
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: process.env.NODE_ENV === "development" ? 1000 : 10,
+  max: process.env.NODE_ENV === "development" ?  1000 : 3,
   message: {
     success: false,
     error: "Too many AI requests, please slow down.",
@@ -585,9 +580,10 @@ app.use("/api/audio/", aiLimiter);
 
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// Static files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/output", express.static(path.join(__dirname, "output")));
+if (process.env.NODE_ENV !== "production") {
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+  app.use("/output", express.static(path.join(__dirname, "output")));
+}
 
 // MongoDB connection
 mongoose.connect(
@@ -987,9 +983,6 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
   }
 });
 
-// Script Routes
-
-// Generate key points
 app.post("/api/script/key-points", authenticateToken, async (req, res) => {
   try {
     const { topic, contentType, language } = req.body;
@@ -1020,8 +1013,6 @@ app.post("/api/script/key-points", authenticateToken, async (req, res) => {
   }
 });
 
-//   trackUsage("scriptsGenerated"),
-// Generate script
 app.post("/api/script/generate", authenticateToken, async (req, res) => {
   try {
     const { topic, duration, keyPoints, contentType, language } = req.body;
@@ -1041,7 +1032,6 @@ app.post("/api/script/generate", authenticateToken, async (req, res) => {
       language
     );
 
-    // Update user usage
     await User.findByIdAndUpdate(req.user._id, {
       $inc: { "usage.scriptsGenerated": 1 },
     });
@@ -1059,7 +1049,6 @@ app.post("/api/script/generate", authenticateToken, async (req, res) => {
   }
 });
 
-// Improve script
 app.post("/api/script/improve", authenticateToken, async (req, res) => {
   try {
     const { selectedText, improvementCommand, script, language } = req.body;
@@ -1092,7 +1081,6 @@ app.post("/api/script/improve", authenticateToken, async (req, res) => {
   }
 });
 
-// Analyze script quality
 app.post("/api/script/quality", authenticateToken, async (req, res) => {
   try {
     const { script, language } = req.body;
@@ -1119,7 +1107,6 @@ app.post("/api/script/quality", authenticateToken, async (req, res) => {
   }
 });
 
-// Extend script
 app.post("/api/script/extend", authenticateToken, async (req, res) => {
   try {
     const { script, topic, contentType, language } = req.body;
@@ -1151,9 +1138,6 @@ app.post("/api/script/extend", authenticateToken, async (req, res) => {
   }
 });
 
-// Audio Routes
-
-// Get available voices
 app.get("/api/audio/voices", authenticateToken, async (req, res) => {
   try {
     const voices = await getAvailableVoices();
@@ -1171,7 +1155,6 @@ app.get("/api/audio/voices", authenticateToken, async (req, res) => {
   }
 });
 
-// Generate audio
 app.post(
   "/api/audio/generate",
   authenticateToken,
@@ -1189,7 +1172,6 @@ app.post(
 
       const audioResult = await generateAudio(text, voiceId);
 
-      // Update user usage
       await User.findByIdAndUpdate(req.user._id, {
         $inc: { "usage.audioGenerated": 1 },
       });
@@ -1208,9 +1190,6 @@ app.post(
   }
 );
 
-// Project Routes
-
-// Create project
 app.post("/api/projects", authenticateToken, async (req, res) => {
   try {
     const { title, topic, contentType, duration, keyPoints } = req.body;
@@ -1246,7 +1225,6 @@ app.post("/api/projects", authenticateToken, async (req, res) => {
   }
 });
 
-// Get user projects
 app.get("/api/projects", authenticateToken, async (req, res) => {
   try {
     const projects = await Project.find({ userId: req.user._id }).sort({
@@ -1323,7 +1301,6 @@ app.delete("/api/projects/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// Global error handler
 app.use((error, req, res, next) => {
   console.error("Global error:", error);
 
@@ -1334,11 +1311,22 @@ app.use((error, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use("*", (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: "Route not found",
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      success: false,
+      error: "API route not found",
+    });
+  }
+
+  res.json({
+    success: true,
+    message: "Tubify API is running",
+    timestamp: new Date().toISOString(),
+    frontend: "https://tybify.vercel.app",
+    documentation: "API endpoints available at /api/*",
   });
 });
 
