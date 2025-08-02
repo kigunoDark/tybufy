@@ -13,6 +13,7 @@
 // const authRoutes = require("../routes/auth");
 // const paymentsRoutes = require("../routes/payments");
 // const scriptRoutes = require("../routes/script");
+
 // const audioRoutes = require("../routes/audio");
 // const thumbnailRoutes = require("../routes/thumbnails");
 // const projectRoutes = require("../routes/projects");
@@ -268,6 +269,7 @@ const corsOptions = {
     "https://tubehi.com",
     "https://www.tubehi.com",
     "https://app.tubehi.com",
+    "https://api.tubehi.com",
     "https://tubifyai.vercel.app",
     "https://tubifyai-gqk6oa1l0-kigunodarks-projects.vercel.app",
     process.env.FRONTEND_URL,
@@ -467,6 +469,12 @@ app.get("/health", (req, res) => {
   });
 });
 
+
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} [${req.method}] ${req.path} - Host: ${req.get('host')} - Origin: ${req.get('origin')}`);
+  next();
+});
+
 app.use((error, req, res, next) => {
   console.error("Global error:", error);
 
@@ -490,6 +498,15 @@ app.use((error, req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, "public")));
+
+// Простой health check для Railway
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+app.get('/ready', (req, res) => {
+  res.status(200).json({ status: 'ready' });
+});
 
 // Catch-all handler
 app.get("*", (req, res) => {
