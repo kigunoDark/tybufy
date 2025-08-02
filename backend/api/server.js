@@ -448,7 +448,7 @@ app.get("/health", (req, res) => {
 
   res.json({
     success: true,
-    message: "Tubihi API is running on Railway",
+    message: "Tubehi API is running on Railway",
     timestamp: new Date().toISOString(),
     uptime: `${Math.floor(uptime / 60)} minutes`,
     memory: {
@@ -502,7 +502,7 @@ app.get("*", (req, res) => {
 
   res.json({
     success: true,
-    message: "Tubihi API is running on Railway",
+    message: "Tubehi API is running on Railway",
     timestamp: new Date().toISOString(),
     frontend: process.env.FRONTEND_URL || "https://tybify.vercel.app",
     documentation: "API endpoints available at /api/*",
@@ -513,7 +513,7 @@ app.get("*", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Tubihi API server running on Railway port ${PORT}`);
+  console.log(`🚀 Tubehi API server running on Railway port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(
     `🌐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:3000"}`
