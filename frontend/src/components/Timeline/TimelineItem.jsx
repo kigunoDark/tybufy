@@ -12,11 +12,11 @@ export const TimelineItem = ({
   onDragEnd,
   onResizeStart,
   onVolumeChange,
-  onOpacityChange, // Новый prop для opacity
+  onOpacityChange, 
   showVolumeControls = true,
-  showOpacityControls = true, // Новый prop для opacity controls
+  showOpacityControls = true,
   hasAudio = false,
-  hasOpacity = false, // Новый prop для определения элементов с opacity
+  hasOpacity = false, 
 }) => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState(false);
@@ -32,27 +32,27 @@ export const TimelineItem = ({
   const opacityControlRef = useRef(null);
 
   const handleVolumeChange = (e) => {
-    const newVolume = parseInt(e.target.value); // 0-100 для UI
+    const newVolume = parseInt(e.target.value); 
     setVolume(newVolume);
-    onVolumeChange?.(item.id, newVolume / 100); // 0-1 для HTML media
+    onVolumeChange?.(item.id, newVolume / 100); 
   };
 
   const handleOpacityChange = (e) => {
-    const newOpacity = parseInt(e.target.value); // 0-100 для UI
+    const newOpacity = parseInt(e.target.value); 
     setOpacity(newOpacity);
-    onOpacityChange?.(item.id, newOpacity / 100); // 0-1 для CSS
+    onOpacityChange?.(item.id, newOpacity / 100);
   };
 
   const toggleVolumeSlider = (e) => {
     e.stopPropagation();
     setShowVolumeSlider(!showVolumeSlider);
-    setShowOpacitySlider(false); // Закрываем opacity slider
+    setShowOpacitySlider(false); 
   };
 
   const toggleOpacitySlider = (e) => {
     e.stopPropagation();
     setShowOpacitySlider(!showOpacitySlider);
-    setShowVolumeSlider(false); // Закрываем volume slider
+    setShowVolumeSlider(false); 
   };
 
   const toggleMute = (e) => {
@@ -69,7 +69,6 @@ export const TimelineItem = ({
     onOpacityChange?.(item.id, newOpacity / 100);
   };
 
-  // Синхронизируем локальное состояние с props
   useEffect(() => {
     const itemVolume = item.volume ?? 1;
     const volumePercent = itemVolume <= 1 ? Math.round(itemVolume * 100) : itemVolume;
@@ -84,7 +83,6 @@ export const TimelineItem = ({
     }
   }, [item.volume, item.opacity, volume, opacity]);
 
-  // Закрываем sliders при клике вне них
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (showVolumeSlider && volumeControlRef.current && !volumeControlRef.current.contains(e.target)) {
@@ -109,10 +107,10 @@ export const TimelineItem = ({
   };
 
   const getOpacityIcon = () => {
-    if (opacity === 0) return "👻"; // Полностью прозрачный
-    if (opacity < 30) return "🌫️"; // Почти прозрачный
-    if (opacity < 70) return "☁️"; // Полупрозрачный
-    return "🖼️"; // Непрозрачный
+    if (opacity === 0) return "👻"; 
+    if (opacity < 30) return "🌫️"; 
+    if (opacity < 70) return "☁️"; 
+    return "🖼️"; 
   };
 
   return (
@@ -128,7 +126,7 @@ export const TimelineItem = ({
         onSelect(item);
       }}
     >
-      {/* Left resize handle */}
+
       <div
         className="absolute left-0 top-0 w-3 h-full cursor-ew-resize opacity-0 group-hover:opacity-100 bg-white/50 rounded-l-lg z-10 flex items-center justify-center"
         onMouseDown={(e) => onResizeStart(e, item, "left")}
@@ -141,9 +139,9 @@ export const TimelineItem = ({
         <div className="w-0.5 h-6 bg-white rounded-full opacity-80"></div>
       </div>
 
-      {/* ОТДЕЛЬНЫЕ зоны: draggable область и controls */}
+
       <div className="h-full mx-3 flex items-center">
-        {/* Draggable область - только название файла */}
+
         <div
           draggable="true"
           onDragStart={(e) => onDragStart(e, item)}
@@ -155,9 +153,9 @@ export const TimelineItem = ({
           {isCopied && <span className="ml-2 text-green-200">📋</span>}
         </div>
 
-        {/* Controls: Volume для audio/video, Opacity для изображений */}
+
         <div className="ml-2 flex items-center gap-1">
-          {/* Volume controls */}
+
           {hasAudio && showVolumeControls && (
             <div 
               ref={volumeControlRef}
@@ -172,7 +170,6 @@ export const TimelineItem = ({
               style={{ cursor: 'default' }}
             >
               {showVolumeSlider ? (
-                // Expanded volume control
                 <div 
                   className="flex items-center gap-1 bg-black/30 rounded-md px-2 py-1 min-w-[80px]"
                   onMouseDown={(e) => e.stopPropagation()}
@@ -219,7 +216,7 @@ export const TimelineItem = ({
                   </span>
                 </div>
               ) : (
-                // Collapsed volume icon
+
                 <button
                   className="text-white/80 hover:text-white transition-colors p-1 rounded"
                   onClick={volume === 0 ? toggleMute : toggleVolumeSlider}
@@ -243,7 +240,6 @@ export const TimelineItem = ({
             </div>
           )}
 
-          {/* Opacity controls */}
           {hasOpacity && showOpacityControls && (
             <div 
               ref={opacityControlRef}
@@ -258,7 +254,6 @@ export const TimelineItem = ({
               style={{ cursor: 'default' }}
             >
               {showOpacitySlider ? (
-                // Expanded opacity control
                 <div 
                   className="flex items-center gap-1 bg-black/30 rounded-md px-2 py-1 min-w-[80px]"
                   onMouseDown={(e) => e.stopPropagation()}
@@ -305,7 +300,7 @@ export const TimelineItem = ({
                   </span>
                 </div>
               ) : (
-                // Collapsed opacity icon
+
                 <button
                   className="text-white/80 hover:text-white transition-colors p-1 rounded"
                   onClick={opacity === 0 ? toggleOpacityMute : toggleOpacitySlider}

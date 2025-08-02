@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 
-const TubifyLanding = () => {
+const TubehiLanging = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -122,7 +122,7 @@ const TubifyLanding = () => {
   const beforeAfter = [
     {
       before: "2 hours to create a video",
-      after: "20 minutes with Tubify",
+      after: "20 minutes with Tubehi",
       improvement: "6x faster",
     },
     {
@@ -188,27 +188,21 @@ const TubifyLanding = () => {
     },
   ];
 
-  // Функция для обработки кликов на кнопки "Начать создавать видео"
   const handleGetStarted = () => {
     if (isAuthenticated) {
-      // Если пользователь авторизован, перенаправляем на видеоредактор
       navigate('/video-maker');
     } else {
-      // Если не авторизован, показываем модальное окно регистрации
       setAuthModalMode('register');
       setShowAuthModal(true);
     }
   };
 
-  // Функция для обработки кнопки "Watch Demo"
   const handleWatchDemo = () => {
-    // Здесь можно добавить логику для показа демо видео
     alert('Demo video coming soon!');
   };
 
   return (
     <div className="landing-container">
-      {/* Hero Section */}
       <section className="hero-section">
         <div className="container">
           <div className="hero-content">
@@ -279,7 +273,7 @@ const TubifyLanding = () => {
             <div className="hero-demo">
               <div className="demo-card">
                 <div className="demo-header">
-                  <h3 className="demo-title">🎬 Tubify Studio</h3>
+                  <h3 className="demo-title">🎬 Tubehi Studio</h3>
                   <div className="demo-recording">
                     <div className="recording-dot"></div>
                     <span className="recording-text">REC</span>
@@ -318,11 +312,10 @@ const TubifyLanding = () => {
         </div>
       </section>
 
-      {/* Before/After Section */}
       <section className="before-after-section">
         <div className="container">
           <div className="section-header text-center">
-            <h2 className="section-title">Before and After Tubify</h2>
+            <h2 className="section-title">Before and After Tubehi</h2>
             <p className="section-subtitle">Real results from our users</p>
           </div>
 
@@ -357,13 +350,12 @@ const TubifyLanding = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section id="features" className="features-section">
         <div className="container">
           <div className="section-header text-center">
             <h2 className="section-title">Powerful toolkit in one place</h2>
             <p className="section-subtitle">
-              Tubify saves you time and resources without compromising on results
+              Tubehi saves you time and resources without compromising on results
             </p>
           </div>
 
@@ -408,7 +400,6 @@ const TubifyLanding = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
       <section id="testimonials" className="testimonials-section">
         <div className="container">
           <div className="testimonials-main">
@@ -490,13 +481,12 @@ const TubifyLanding = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
       <section id="pricing" className="pricing-section">
         <div className="container">
           <div className="section-header text-center">
             <h2 className="section-title">Choose a plan that fits your needs</h2>
             <p className="section-subtitle">
-              7-day money-back guarantee. Choose a plan and try Tubify. If
+              7-day money-back guarantee. Choose a plan and try Tubehi. If
               you're not satisfied, we'll give you a refund!
             </p>
           </div>
@@ -580,14 +570,13 @@ const TubifyLanding = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="cta-section">
         <div className="container">
           <div className="cta-content">
             <h2 className="cta-title">7-day money-back guarantee</h2>
 
             <p className="cta-description">
-              Choose a plan that fits your needs and try Tubify. If you won't
+              Choose a plan that fits your needs and try Tubehi. If you won't
               be satisfied, we'll give you a refund (yes, that's how sure we are
               you'll love it)!
             </p>
@@ -604,7 +593,6 @@ const TubifyLanding = () => {
         </div>
       </section>
 
-      {/* Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -614,4 +602,4 @@ const TubifyLanding = () => {
   );
 };
 
-export default TubifyLanding;
+export default TubehiLanging;

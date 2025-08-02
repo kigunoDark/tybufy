@@ -47,7 +47,7 @@ const HelpCenter = () => {
     {
       id: 1,
       category: "getting-started",
-      question: "How do I create my first video with Tubify?",
+      question: "How do I create my first video with Tubehi?",
       answer:
         "Creating your first video is simple! After signing up, click 'Create New Video' and follow these steps: 1) Enter your topic and select content type, 2) Generate AI script or write your own, 3) Use the teleprompter to record, 4) Export your finished video. The whole process takes just a few minutes!",
       popular: true,
@@ -71,9 +71,9 @@ const HelpCenter = () => {
     {
       id: 4,
       category: "voice-recording",
-      question: "What audio quality does Tubify support?",
+      question: "What audio quality does Tubehi support?",
       answer:
-        "Tubify records in HD quality up to 44.1kHz with noise cancellation and auto-sync features. Your recordings are automatically synchronized with the teleprompter timing for perfect audio-visual alignment.",
+        "Tubehi records in HD quality up to 44.1kHz with noise cancellation and auto-sync features. Your recordings are automatically synchronized with the teleprompter timing for perfect audio-visual alignment.",
       popular: false,
     },
     {
@@ -89,7 +89,7 @@ const HelpCenter = () => {
       category: "billing",
       question: "Do you offer refunds?",
       answer:
-        "We offer a 7-day money-back guarantee on all paid plans. If you're not satisfied with Tubify for any reason, contact our support team within 7 days of purchase for a full refund.",
+        "We offer a 7-day money-back guarantee on all paid plans. If you're not satisfied with Tubehi for any reason, contact our support team within 7 days of purchase for a full refund.",
       popular: false,
     },
     {
@@ -198,7 +198,7 @@ const HelpCenter = () => {
           </h1>
 
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Find answers to your questions, learn how to use Tubify
+            Find answers to your questions, learn how to use Tubehi
             effectively, and get the support you need to create amazing videos.
           </p>
 
@@ -520,7 +520,7 @@ const HelpCenter = () => {
               </h3>
               <p className="text-xl text-blue-100 mb-8">
                 Connect with 20,000+ content creators, share tips, get inspired,
-                and stay updated on the latest Tubify features and best
+                and stay updated on the latest Tubehi features and best
                 practices.
               </p>
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center">
@@ -539,14 +539,13 @@ const HelpCenter = () => {
         </div>
       </section>
 
-      {/* Footer CTA */}
       <section className="py-12 px-6 bg-gradient-to-r from-slate-50 to-blue-50">
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-2xl font-bold text-gray-900 mb-4">
             Ready to Create Amazing Videos?
           </h3>
           <p className="text-lg text-gray-600 mb-8">
-            Start your journey with Tubify today and join thousands of
+            Start your journey with Tubehi today and join thousands of
             successful creators.
           </p>
           <Link

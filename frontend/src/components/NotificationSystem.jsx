@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import  { useState, useEffect } from "react";
 import { X, AlertTriangle, Info, CheckCircle, Clock } from "lucide-react";
 
 const NotificationSystem = () => {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    // Слушаем глобальные уведомления
     const handleNotification = (event) => {
       addNotification(event.detail);
     };
@@ -24,8 +23,6 @@ const NotificationSystem = () => {
     };
 
     setNotifications((prev) => [...prev, newNotification]);
-
-    // Автоудаление через указанное время
     setTimeout(() => {
       removeNotification(id);
     }, notification.duration || 5000);

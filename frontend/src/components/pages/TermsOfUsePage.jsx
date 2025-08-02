@@ -73,7 +73,7 @@ const TermsComingSoon = () => {
     {
       icon: Scale,
       title: "Fair Terms",
-      description: "Balanced agreements that protect both creators and Tubify",
+      description: "Balanced agreements that protect both creators and Tubehi",
       gradient: "from-green-500 to-teal-500",
     },
     {
@@ -238,7 +238,6 @@ const TermsComingSoon = () => {
         </div>
       </section>
 
-      {/* Development Timeline */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
@@ -301,7 +300,7 @@ const TermsComingSoon = () => {
             </h3>
             
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-              While we finalize our terms, Tubify is fully functional and ready to help 
+              While we finalize our terms, Tubehi is fully functional and ready to help 
               you create professional videos. Our current usage is governed by our 
               preliminary guidelines and industry-standard practices.
             </p>
@@ -351,7 +350,6 @@ const TermsComingSoon = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <section className="py-12 px-6 bg-gradient-to-r from-slate-50 to-blue-50">
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">

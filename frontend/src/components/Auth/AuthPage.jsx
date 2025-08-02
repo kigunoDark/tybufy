@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { Link } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Brain,
@@ -13,6 +14,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { ROUTES } from "../constants/routes";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -83,16 +85,20 @@ const AuthPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        {/* Left side - Benefits */}
         <div className="hidden lg:block">
           <div className="text-center mb-12">
             <div className="flex items-center justify-center space-x-3 mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-slate-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl">
-                <Brain className="text-white" size={32} />
+                <Link
+                  to={ROUTES.HOME}
+                  className="hover:text-slate-400 transition-colors"
+                >
+                  <Brain className="text-white" size={24} />
+                </Link>
               </div>
               <div>
                 <div className="text-3xl font-black bg-gradient-to-r from-slate-700 to-blue-700 bg-clip-text text-transparent">
-                  Tubify
+                  Tubehi
                 </div>
                 <div className="text-sm font-bold text-slate-600">
                   CONTENT CREATION STUDIO
@@ -108,7 +114,7 @@ const AuthPage = () => {
             </h1>
 
             <p className="text-lg text-gray-600 mb-8">
-              Join thousands of creators who use Tubify to make professional
+              Join thousands of creators who use Tubehi to make professional
               videos faster than ever.
             </p>
           </div>
@@ -134,12 +140,11 @@ const AuthPage = () => {
               <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent mb-2">
                 47,283+
               </div>
-              <div className="text-gray-600">creators trust Tubify</div>
+              <div className="text-gray-600">creators trust Tubehi</div>
             </div>
           </div>
         </div>
 
-        {/* Right side - Auth Form */}
         <div className="w-full max-w-md mx-auto">
           <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-slate-200/50">
             <div className="text-center mb-8">

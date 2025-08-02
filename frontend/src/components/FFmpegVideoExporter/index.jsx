@@ -137,7 +137,6 @@ const FFmpegVideoExporter = ({
     }
   }, [isOpen]);
 
-  // Загрузка медиа элементов
   const loadMediaElement = async (item) => {
     if (!item.url) {
       console.error(`❌ URL отсутствует для ${item.name}`);

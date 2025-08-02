@@ -1,4 +1,3 @@
-
 const axios = require("axios");
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -41,6 +40,7 @@ async function generateScript(
 
   const prompt = `
   Создайте профессиональный видеосценарий на тему: "${topic}"
+  Создайте сценарий длиной **не менее ${wordCount} слов**. Не завершайте текст, пока не будет достигнуто это количество слов. При необходимости — добавьте примеры, советы, дополнительные детали.
   Стиль текста ${detailLevel}
   Тип контента: ${contentType}
   Целевая аудитория: молодежь, новички, интересующиеся темой
@@ -60,7 +60,6 @@ async function generateScript(
   - Тон: Профессиональный, но доступный
   - Добавьте эмоциональную окраску, чтобы удержать внимание
   - Используйте простые слова, избегайте жаргона
-  - Колличество слова ${wordCount}
 
   Ответьте на выбранном языке: ${language}
 `;
@@ -76,7 +75,7 @@ async function generateScript(
             content: prompt,
           },
         ],
-        max_tokens: wordCount,
+        max_tokens: Math.round(wordCount * 1.5),
         temperature: 0.7,
       },
       {
@@ -107,7 +106,7 @@ async function generateKeyPoints(topic, contentType, language = "eng") {
 
   try {
     const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions ",
+      "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-4o-mini",
         messages: [
@@ -181,7 +180,7 @@ async function improveArticle(
 
   try {
     const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions ",
+      "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-4o-mini",
         messages: [
@@ -261,7 +260,7 @@ ${script}
 }
 `;
   const response = await axios.post(
-    "https://api.openai.com/v1/chat/completions ",
+    "https://api.openai.com/v1/chat/completions",
     {
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
@@ -309,7 +308,7 @@ ${script}
 
   try {
     const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions ",
+      "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],

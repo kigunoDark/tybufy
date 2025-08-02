@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import AudioPlayer from "./AudioPlayer";
 
 import {
   Upload,
@@ -34,6 +35,7 @@ const ContentStudio = ({
   contentType,
   setContentType,
   selectedLanguage,
+  onAudioSaved,
   setSelectedLanguage,
   topic,
   loading,
@@ -45,6 +47,8 @@ const ContentStudio = ({
   setScript,
   isAuthenticated,
   audioMethod,
+  generatedAudio,
+  onGenerateAudio,
   setAudioMethod,
   recordedAudio,
   setShowTeleprompter,
@@ -83,6 +87,24 @@ const ContentStudio = ({
     { id: "chinese", name: "中文", flag: "🇨🇳" },
   ];
 
+  const handleAudioSaved = (savedFiles) => {
+    console.log("🎵 Аудио сохранено в MediaLibrary:", savedFiles);
+
+    // Уведомляем родительский компонент (например, главное приложение)
+    if (onAudioSaved) {
+      onAudioSaved(savedFiles);
+    }
+
+    // Опционально: показываем уведомление
+    if (savedFiles.length > 1) {
+      console.log(
+        `✅ Сохранено ${savedFiles.length} частей аудио в Media Library`
+      );
+    } else {
+      console.log(`✅ Аудио "${savedFiles[0].name}" сохранено в Media Library`);
+    }
+  };
+
   useEffect(() => {
     const fetchVoices = async () => {
       if (!isAuthenticated) return;
@@ -90,7 +112,6 @@ const ContentStudio = ({
       setVoicesLoading(true);
       try {
         const result = await getAvailableVoices();
-        console.log("🎤 Загруженные голоса:", result);
 
         if (result.success && result.voices) {
           setVoices(result.voices);
@@ -806,10 +827,10 @@ const ContentStudio = ({
                 onChange={(e) => setDuration(e.target.value)}
                 className="w-full p-1 bg-white/90 backdrop-blur-sm border border-slate-200 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 shadow hover:shadow-lg font-medium text-xs"
               >
-                <option>~5 minutes (500 words)</option>
-                <option>~10 minutes (1000 words)</option>
-                <option>~15 minutes (1500 words)</option>
-                <option>~20 minutes (2000 words)</option>
+                <option value="short">~5 minutes</option>
+                <option value="medium">~10 minutes</option>
+                <option value="long">~15 minutes</option>
+                <option value="extra_long">~20 minutes</option>
               </select>
             </div>
 
@@ -884,7 +905,7 @@ const ContentStudio = ({
                     </div>
                     <button
                       onClick={extendScript}
-                      disabled={loading || loading || !isAuthenticated}
+                      disabled={loading || !isAuthenticated}
                       className="flex items-center px-1 py-0.5 text-xs bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded transition-all duration-300 shadow hover:shadow-lg hover:scale-105 font-semibold"
                       title="Add more content to script"
                     >
@@ -1000,7 +1021,7 @@ const ContentStudio = ({
                     </p>
                   </button>
                   <button
-                    onClick={() => setAudioMethod("record")}
+                    onClick={() => !loading && setAudioMethod("record")}
                     className={`p-4 rounded border-2 transition-all duration-300 ${
                       audioMethod === "record"
                         ? "border-slate-500 bg-slate-50 shadow shadow-slate-500/30"
@@ -1029,72 +1050,94 @@ const ContentStudio = ({
                 </div>
 
                 {audioMethod === "ai" && (
-                  <div className="space-y-1">
-                    <div>
-                      <label className="block text-gray-700 font-semibold mb-3 text-xs">
-                        Select voice
-                      </label>
-                      {voicesLoading ? (
-                        <div className="w-full p-2 bg-gray-100 border border-slate-200 rounded text-center text-xs">
-                          <div className="flex items-center justify-center space-x-2">
-                            <div className="animate-spin rounded-full h-3 w-3 border border-blue-500 border-t-transparent"></div>
-                            <span className="text-gray-600">
-                              Loading voices...
-                            </span>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <div>
+                        <label className="block text-gray-700 font-semibold mb-3 text-xs">
+                          Select voice
+                        </label>
+                        {voicesLoading ? (
+                          <div className="w-full p-2 bg-gray-100 border border-slate-200 rounded text-center text-xs">
+                            <div className="flex items-center justify-center space-x-2">
+                              <div className="animate-spin rounded-full h-3 w-3 border border-blue-500 border-t-transparent"></div>
+                              <span className="text-gray-600">
+                                Loading voices...
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ) : voices.length > 0 ? (
-                        <select
-                          value={selectedVoiceId}
-                          onChange={(e) => setSelectedVoiceId(e.target.value)}
-                          className="w-full p-1 bg-white border border-slate-200 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 shadow hover:shadow-lg font-medium text-xs"
-                        >
-                          {voices.map((voice) => (
-                            <option key={voice.voice_id} value={voice.voice_id}>
-                              {voice.name} - {voice.gender || "Unknown"}{" "}
-                              {voice.accent || ""} ({voice.age || "Unknown"})
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <select className="w-full p-1 bg-white border border-slate-200 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 shadow hover:shadow-lg font-medium text-xs">
-                          <option>George - Male, professional</option>
-                          <option>Rachel - Female, friendly</option>
-                          <option>Domi - Female, energetic</option>
-                          <option>Bella - Female, young</option>
-                        </select>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-gray-700 font-semibold mb-3 text-xs">
-                        Speech speed
-                      </label>
-                      <div className="flex items-center space-x-1">
-                        <span className="text-xs text-gray-500">Slow</span>
-                        <input
-                          type="range"
-                          min="0.5"
-                          max="2"
-                          step="0.1"
-                          defaultValue="1"
-                          className="flex-1"
-                        />
-                        <span className="text-xs text-gray-500">Fast</span>
+                        ) : voices.length > 0 ? (
+                          <select
+                            value={selectedVoiceId}
+                            onChange={(e) => setSelectedVoiceId(e.target.value)}
+                            className="w-full p-1 bg-white border border-slate-200 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 shadow hover:shadow-lg font-medium text-xs"
+                          >
+                            {voices.map((voice) => (
+                              <option
+                                key={voice.voice_id}
+                                value={voice.voice_id}
+                              >
+                                {voice.name} - {voice.description}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="w-full p-2 bg-red-100 border border-red-200 rounded text-center text-xs text-red-600">
+                            Failed to load voices. Please refresh the page.
+                          </div>
+                        )}
                       </div>
+
+                      <div>
+                        <label className="block text-gray-700 font-semibold mb-3 text-xs">
+                          Speech speed
+                        </label>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-gray-500">Slow</span>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="2"
+                            step="0.1"
+                            defaultValue="1"
+                            className="flex-1"
+                          />
+                          <span className="text-xs text-gray-500">Fast</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => generateAudio(selectedVoiceId)}
+                        disabled={
+                          !isAuthenticated ||
+                          voicesLoading ||
+                          loading ||
+                          !script.trim()
+                        }
+                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-2 px-3 rounded transition-all duration-300 shadow hover:shadow-lg hover:scale-105 text-xs flex items-center justify-center space-x-2"
+                      >
+                        {loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent"></div>
+                            <span>Generating audio...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 size={14} />
+                            <span>Generate AI voiceover</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => generateAudio(selectedVoiceId)} 
-                      disabled={!isAuthenticated || voicesLoading}
-                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-1 px-2 rounded transition-all duration-300 shadow hover:shadow-lg hover:scale-105 text-xs"
-                    >
-                      <Volume2 className="mr-1 inline" size={10} />
-                      {voicesLoading
-                        ? "Loading voices..."
-                        : "Generate AI voiceover"}
-                    </button>
+
+                    {/* Показываем аудио плеер если аудио сгенерировано */}
+                    {generatedAudio && (
+                      <AudioPlayer
+                        generatedAudio={generatedAudio}
+                        onClose={() => onGenerateAudio(null)}
+                      />
+                    )}
                   </div>
                 )}
-
                 {audioMethod === "record" && (
                   <div className="space-y-1">
                     <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-4 rounded border border-slate-200 shadow">

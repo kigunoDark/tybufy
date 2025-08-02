@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+
+[build.nixpacks]
+buildCommand = "cd backend && npm install"
+
+[deploy]
+startCommand = "cd backend && npm start"
+
+# Альтернативно можно указать рабочую директорию
+# [build]
+# workingDirectory = "backend"

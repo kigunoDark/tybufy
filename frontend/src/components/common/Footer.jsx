@@ -11,7 +11,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="text-2xl font-bold text-slate-300">Tubify</div>
+              <div className="text-2xl font-bold text-slate-300">Tubehi</div>
               <div className="bg-gradient-to-r from-slate-500 to-blue-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
                 AI STUDIO
               </div>
@@ -77,7 +77,7 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="flex items-center space-x-6 text-sm text-gray-400">
               <span>
-                © {currentYear} Tubify. Профессиональные ИИ решения.
+                © {currentYear} Tubehi. Professional AI solutions.
               </span>
               <Link
                 to={ROUTES.TERMS_OF_USE}

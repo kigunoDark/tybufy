@@ -9,7 +9,7 @@ import { X, Sparkles, Zap, Brain, Heart, Star, Target } from "lucide-react";
 
 const apiClient = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
-  timeout: 30000,
+  timeout: 120000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -45,7 +45,7 @@ const VideoEditorApp = () => {
   const [script, setScript] = useState("");
   const [topic, setTopic] = useState("");
   const [keyPoints, setKeyPoints] = useState([""]);
-  const [duration, setDuration] = useState("~10 минут (1000 слов)");
+  const [duration, setDuration] = useState("medium");
   const [audioUrl, setAudioUrl] = useState("");
   const [currentStep, setCurrentStep] = useState(1);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
@@ -58,9 +58,11 @@ const VideoEditorApp = () => {
   const [showAudioEditor, setShowAudioEditor] = useState(false);
   const [assessment, setAssessment] = useState({});
   const [contentType, setContentType] = useState("lifestyle");
-  const [loading, setLoading] = useState(false);
+  const [loading, setIsLoading] = useState(false);
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("english");
+  const [generatedAudio, setGeneratedAudio] = useState(null);
+
   const [mediaLibrary, setMediaLibrary] = useState({
     videos: [],
     audios: [],
@@ -83,7 +85,7 @@ const VideoEditorApp = () => {
   useEffect(() => {
     (async () => {
       if (script.length && isAuthenticated) {
-        setLoading(true);
+        setIsLoading(true);
         try {
           const res = await apiClient.post("/api/script/quality", { script });
           setAssessment(res.data.data.quality);
@@ -94,7 +96,7 @@ const VideoEditorApp = () => {
             video_duration: Math.ceil(script.length / 150),
           });
         } finally {
-          setLoading(false);
+          setIsLoading(false);
         }
       }
     })();
@@ -126,7 +128,7 @@ const VideoEditorApp = () => {
         });
 
         // Затем логинимся
-        const loginResponse = await apiClient.post("/api/auth/login", {
+        const loginResponse = await apiClient.post("/api", {
           email: "demo@example.com",
           password: "demo123",
         });
@@ -170,7 +172,7 @@ const VideoEditorApp = () => {
   const generateKeyPoints = async () => {
     if (!topic.trim() || !isAuthenticated) return;
 
-    setLoading(true);
+    setIsLoading(true);
 
     try {
       const response = await apiClient.post("/api/script/key-points", {
@@ -214,14 +216,14 @@ const VideoEditorApp = () => {
     } catch (error) {
       console.error("Generation error:", error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const generateScript = async () => {
     if (!topic.trim() || !isAuthenticated) return;
 
-    setLoading(true);
+    setIsLoading(true);
     const validKeyPoints = keyPoints.filter((point) => point.trim() !== "");
 
     try {
@@ -241,14 +243,14 @@ const VideoEditorApp = () => {
         "Ошибка при генерации скрипта. Проверьте подключение к серверу."
       );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const extendScript = async () => {
     if (!script.trim() || !topic.trim() || !isAuthenticated) return;
 
-    setLoading(true);
+    setIsLoading(true);
 
     try {
       const res = await apiClient.post("/api/script/extend", {
@@ -262,68 +264,65 @@ const VideoEditorApp = () => {
     } catch (error) {
       console.error("Ошибка при расширении скрипта:", error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-const handleTeleprompterSave = async (recordingData) => {
-  try {
-    const libraryType = recordingData.type === "video" ? "videos" : "audios";
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const extension = recordingData.type === "video" ? "webm" : "webm";
-    const fileName = `teleprompter-${recordingData.type}-${timestamp}.${extension}`;
-
-    const file = new File([recordingData.blob], fileName, {
-      type:
-        recordingData.blob.type ||
-        (recordingData.type === "video" ? "video/webm" : "audio/webm"),
-      lastModified: Date.now(),
-    });
-
-    const fileData = {
-      id: Date.now() + Math.random(),
-      name: fileName,
-      type: libraryType,
-      mimeType: file.type,
-      mediaType: libraryType,
-      size: file.size,
-      blob: file,
-      duration: recordingData.duration || 0,
-      width: 0,
-      height: 0,
-      createdAt: recordingData.timestamp || new Date().toISOString(),
-      source: "teleprompter",
-      url: URL.createObjectURL(file),
-    };
-
-    // ✅ ДОБАВИМ: Попытаемся сохранить в IndexedDB
+  const handleTeleprompterSave = async (recordingData) => {
     try {
-      const request = indexedDB.open('MVP_VideoEditor', 1);
-      request.onsuccess = (event) => {
-        const db = event.target.result;
-        const transaction = db.transaction(['files'], 'readwrite');
-        const store = transaction.objectStore('files');
-        
-        const dbData = { ...fileData };
-        delete dbData.url;
-      
-      };
-    } catch (dbError) {
-      console.warn('⚠️ Не удалось сохранить в IndexedDB:', dbError);
-    }
-    setMediaLibrary((prev) => ({
-      ...prev,
-      [libraryType]: [...(prev[libraryType] || []), fileData],
-    }));
+      const libraryType = recordingData.type === "video" ? "videos" : "audios";
 
-    console.log(`✅ Файл из телесуфлера добавлен в библиотеку: ${fileName}`);
-    return true;
-  } catch (error) {
-    console.error("❌ Ошибка сохранения записи из телесуфлера:", error);
-    return false;
-  }
-};
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const extension = recordingData.type === "video" ? "webm" : "webm";
+      const fileName = `teleprompter-${recordingData.type}-${timestamp}.${extension}`;
+
+      const file = new File([recordingData.blob], fileName, {
+        type:
+          recordingData.blob.type ||
+          (recordingData.type === "video" ? "video/webm" : "audio/webm"),
+        lastModified: Date.now(),
+      });
+
+      const fileData = {
+        id: Date.now() + Math.random(),
+        name: fileName,
+        type: libraryType,
+        mimeType: file.type,
+        mediaType: libraryType,
+        size: file.size,
+        blob: file,
+        duration: recordingData.duration || 0,
+        width: 0,
+        height: 0,
+        createdAt: recordingData.timestamp || new Date().toISOString(),
+        source: "teleprompter",
+        url: URL.createObjectURL(file),
+      };
+
+      // ✅ ДОБАВИМ: Попытаемся сохранить в IndexedDB
+      try {
+        const request = indexedDB.open("MVP_VideoEditor", 1);
+        request.onsuccess = (event) => {
+          const db = event.target.result;
+          const transaction = db.transaction(["files"], "readwrite");
+          const store = transaction.objectStore("files");
+
+          const dbData = { ...fileData };
+          delete dbData.url;
+        };
+      } catch (dbError) {
+        console.warn("⚠️ Не удалось сохранить в IndexedDB:", dbError);
+      }
+      setMediaLibrary((prev) => ({
+        ...prev,
+        [libraryType]: [...(prev[libraryType] || []), fileData],
+      }));
+      return true;
+    } catch (error) {
+      console.error("❌ Ошибка сохранения записи из телесуфлера:", error);
+      return false;
+    }
+  };
   const handleTextSelection = () => {
     const selection = window.getSelection();
     const selectedText = selection.toString().trim();
@@ -362,67 +361,65 @@ const handleTeleprompterSave = async (recordingData) => {
     }
   };
 
-const generateAudio = async () => {
-  if (!isAuthenticated || !script.trim()) {
-    console.warn("Нет авторизации или пустой скрипт");
-    return;
-  }
+  const generateAudio = async (voiceId) => {
+    if (!script.trim()) {
+      alert("Please generate a script first");
+      return;
+    }
 
-  setLoading(true);
-  setAudioUrl("");
+    const textLength = script.length;
 
-  try {
-    const response = await apiClient.post("/api/audio/generate", {
-      text: script,
-      voiceId: 'JBFqnCBsd6RMkjVDRZzb', // ElevenLabs voice ID
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.8,
-      },
-      output_format: "mp3_44100_128"
-    });
+    if (textLength > 1800) {
+      const estimatedTime = Math.ceil(textLength / 1800) * 15; // ~15 сек на часть
+      console.log(
+        `⏱️ Длинный текст будет разбит на части. Ожидаемое время: ~${estimatedTime} секунд`
+      );
+    }
 
-    if (response.data.success) {
-      const audioData = response.data.data;
-      
-      if (audioData.audioUrl) {
-        // Прямая ссылка на аудио
-        setAudioUrl(audioData.audioUrl);
-      } else if (audioData.audioData) {
-        // Base64 данные
-        const audioBlob = new Blob(
-          [Uint8Array.from(atob(audioData.audioData), c => c.charCodeAt(0))], 
-          { type: 'audio/mpeg' }
-        );
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setAudioUrl(audioUrl);
+    setIsLoading(true);
+
+    try {
+      const response = await apiClient.post("/api/audio/generate", {
+        text: script,
+        voiceId: voiceId,
+      });
+
+      const data = response.data;
+
+      if (data.success) {
+        setGeneratedAudio(data.data);
+      } else {
+        throw new Error(data.error || "Failed to generate audio");
       }
-      
-      setCurrentStep(4);
-      console.log("✅ Аудио успешно сгенерировано");
-      
-    } else {
-      throw new Error(response.data.error || "Ошибка сервера");
+    } catch (error) {
+      console.error("❌ Ошибка при генерации аудио:", error);
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        alert(
+          `⏱️ Timeout: Текст слишком длинный (${textLength} символов). Генерация заняла больше 2 минут. Попробуйте разбить текст на более короткие части или используйте более короткий текст.`
+        );
+      } else if (error.response?.status === 408) {
+        alert(
+          "⏱️ Сервер не успел обработать запрос. Попробуйте сократить текст."
+        );
+      } else if (error.response?.status === 429) {
+        alert(
+          "🚫 Превышен лимит запросов API. Подождите немного и попробуйте снова."
+        );
+      } else if (error.response?.status === 404) {
+        alert("❌ Сервис аудио не найден. Проверьте подключение к серверу.");
+      } else if (error.response?.status === 401) {
+        alert("🔐 Требуется повторная авторизация. Обновите страницу.");
+      } else if (error.response?.data?.error) {
+        alert(`❌ Ошибка сервера: ${error.response.data.error}`);
+      } else if (error.message) {
+        alert(`❌ Ошибка: ${error.message}`);
+      } else {
+        alert("❌ Неизвестная ошибка при генерации аудио. Попробуйте еще раз.");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    
-  } catch (error) {
-    console.error("❌ Ошибка при генерации аудио:", error);
-    
-    setAuthError(
-      `Не удалось сгенерировать аудио: ${error.response?.data?.error || error.message}`
-    );
-    
-    // Fallback для демо
-    if (process.env.NODE_ENV === 'development') {
-      setTimeout(() => {
-        setAudioUrl("demo-generated");
-        setCurrentStep(4);
-      }, 2000);
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleTeleprompterRecording = (blob, type) => {
     if (type === "video") {
@@ -533,6 +530,8 @@ const generateAudio = async () => {
           isLeftPanelCollapsed={isLeftPanelCollapsed}
           setIsLeftPanelCollapsed={setIsLeftPanelCollapsed}
           contentType={contentType}
+          generatedAudio={generatedAudio}
+          onGenerateAudio={setGeneratedAudio}
           setContentType={setContentType}
           setSelectedLanguage={setSelectedLanguage}
           selectedLanguage={selectedLanguage}
@@ -553,7 +552,7 @@ const generateAudio = async () => {
           audioUrl={audioUrl}
           assessment={assessment}
           loading={loading}
-          currentStep={currentStep} 
+          currentStep={currentStep}
           handleTextSelection={handleTextSelection}
           generateKeyPoints={generateKeyPoints}
           generateScript={generateScript}

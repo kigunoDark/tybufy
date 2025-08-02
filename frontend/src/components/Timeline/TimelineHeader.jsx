@@ -15,7 +15,6 @@ export const TimelineHeader = ({
   copiedItem,
   timelineZoom,
   selectedTimelineItem,
-  onOpenExportModal,
   addOverlayTrack,
   addAudioTrack,
   addToTimelineAtCurrentTime,
@@ -26,7 +25,7 @@ export const TimelineHeader = ({
   zoomIn,
   zoomOut,
   resetZoom,
-  timelineItems = [], // ✅ ДОБАВИТЬ ЭТОТ ПРОП
+  timelineItems = [],
 }) => {
   const getStatusMessage = () => {
     if (draggedItem) {
@@ -66,7 +65,6 @@ export const TimelineHeader = ({
     setShowExportModal(true);
   };
 
-  // ✅ Проверяем есть ли элементы в таймлайне
   const hasTimelineItems = timelineItems && timelineItems.length > 0;
 
   return (
@@ -107,14 +105,12 @@ export const TimelineHeader = ({
             <HelpButtonWithTooltip />
           </div>
           
-          {/* ✅ Показываем кнопку только если есть элементы в таймлайне */}
           {hasTimelineItems && (
             <button
               onClick={handleDownloadOpen}
               className="relative px-3 py-1.5 bg-gradient-to-r from-slate-600 to-blue-600 hover:from-slate-700 hover:to-blue-700 text-white font-semibold text-xs rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse hover:animate-none group overflow-hidden"
               title="Экспорт готового видео"
             >
-              {/* Анимированный фон в цветах сайта */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-slate-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
               <div className="relative flex items-center gap-1.5">
@@ -125,8 +121,7 @@ export const TimelineHeader = ({
                 <span className="tracking-wide">Export</span>
                 <div className="w-1 h-1 bg-white rounded-full opacity-75 animate-pulse"></div>
               </div>
-              
-              {/* Минимальные блестки */}
+
               <div 
                 className="absolute top-0.5 right-2 w-0.5 h-0.5 bg-white rounded-full opacity-60 animate-ping" 
                 style={{ animationDelay: "0.5s" }}

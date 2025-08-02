@@ -1,5 +1,4 @@
-// src/components/Auth/ProtectedRoute.js
-import React from "react";
+
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Loader2, Brain } from "lucide-react";
@@ -18,7 +17,7 @@ const ProtectedRoute = ({ children }) => {
           <div className="flex items-center justify-center space-x-3 mb-4">
             <Loader2 size={24} className="animate-spin text-blue-600" />
             <span className="text-xl font-semibold text-gray-700">
-              Loading Tubify...
+              Loading Tubehi...
             </span>
           </div>
           <p className="text-gray-500">Preparing your workspace</p>

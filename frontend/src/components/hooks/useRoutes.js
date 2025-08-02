@@ -7,32 +7,32 @@ const PrivacyPolicyPage = lazy(() => import("../pages/PrivacyPolicyPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 const HelpCenter = lazy(() => import("../pages/HelpCenter"));
 const AboutUs = lazy(() => import("../pages/AboutUs"));
-const TubifyLanding = lazy(() => import("../pages/TubifyLanding"));
+const TubehiLanging = lazy(() => import("../pages/TubehiLanging"));
 
 export const useAppRoutes = () => {
   return [
     {
       path: ROUTES.HOME,
-      element: TubifyLanding,
-      title: "Tubify - AI Video Creator",
+      element: TubehiLanging,
+      title: "Tubehi - AI Video Creator",
       requiresAuth: false,
     },
     {
       path: ROUTES.VIDEO_MAKER,
       element: VideoEditorApp,
-      title: "Video Maker - Tubify",
+      title: "Video Maker - Tubehi",
       requiresAuth: true,
     },
     {
       path: ROUTES.TERMS_OF_USE,
       element: TermsOfUsePage,
-      title: "Terms of Use - Tubify",
+      title: "Terms of Use - Tubehi",
       requiresAuth: false,
     },
     {
       path: ROUTES.PRIVACY_POLICY,
       element: PrivacyPolicyPage,
-      title: "Privacy Policy - Tubify",
+      title: "Privacy Policy - Tubehi",
       requiresAuth: false,
     },
     {
@@ -50,7 +50,7 @@ export const useAppRoutes = () => {
     {
       path: ROUTES.NOT_FOUND,
       element: NotFoundPage,
-      title: "Page Not Found - Tubify",
+      title: "Page Not Found - Tubehi",
       requiresAuth: false,
     },
   ];

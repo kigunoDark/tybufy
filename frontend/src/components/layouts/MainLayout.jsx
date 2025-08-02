@@ -1,4 +1,3 @@
-// src/components/layouts/MainLayout.js
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import Header from "../common/Header";
@@ -9,10 +8,9 @@ const MainLayout = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
   const isLoginPage = location.pathname === "/login";
-  const isAuthPage = location.pathname === "/auth";
   const isLandingPage = location.pathname === "/";
 
-  const showHeader = !isLoginPage && !isAuthPage;
+  const showMainLayer = !isLoginPage;
 
   const getBackgroundClass = () => {
     if (isLandingPage && !isAuthenticated) {
@@ -23,11 +21,11 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className={`min-h-screen flex flex-col ${getBackgroundClass()}`}>
-      {showHeader && <Header />}
+      {showMainLayer && <Header />}
 
-      <main className={`flex-1 ${showHeader ? "" : ""}`}>{children}</main>
+      <main className={`flex-1 ${showMainLayer ? "" : ""}`}>{children}</main>
 
-      {showHeader && <Footer />}
+      {showMainLayer && <Footer />}
     </div>
   );
 };

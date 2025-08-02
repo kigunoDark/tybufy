@@ -1,4 +1,3 @@
-// src/components/common/ErrorBoundary.js
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home, Brain } from 'lucide-react';
 
@@ -18,7 +17,6 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     });
     
-    // Логируем ошибку (в продакшене отправляйте в сервис мониторинга)
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
@@ -35,12 +33,10 @@ class ErrorBoundary extends React.Component {
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center px-6">
           <div className="max-w-md w-full text-center">
-            {/* Logo */}
             <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
               <AlertTriangle className="text-white" size={40} />
             </div>
             
-            {/* Error message */}
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
               Oops! Something went wrong
             </h1>
@@ -49,7 +45,6 @@ class ErrorBoundary extends React.Component {
               We encountered an unexpected error. Don't worry, our team has been notified and we're working on a fix.
             </p>
             
-            {/* Action buttons */}
             <div className="space-y-4">
               <button
                 onClick={this.handleReload}
@@ -68,17 +63,15 @@ class ErrorBoundary extends React.Component {
               </button>
             </div>
             
-            {/* Tubify branding */}
             <div className="mt-12 flex items-center justify-center space-x-3 opacity-60">
               <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-blue-600 rounded-lg flex items-center justify-center">
                 <Brain className="text-white" size={16} />
               </div>
               <span className="text-lg font-black bg-gradient-to-r from-slate-700 to-blue-700 bg-clip-text text-transparent">
-                Tubify
+                Tubehi
               </span>
             </div>
             
-            {/* Debug info (только в development mode) */}
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="mt-8 text-left">
                 <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">

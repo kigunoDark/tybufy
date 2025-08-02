@@ -45,7 +45,7 @@ const AboutUs = () => {
     {
       name: "Alex Rodriguez",
       role: "CEO & Co-Founder",
-      bio: "Former YouTube creator with 2M+ subscribers. Built Tubify to solve his own content creation challenges.",
+      bio: "Former YouTube creator with 2M+ subscribers. Built Tubehi to solve his own content creation challenges.",
       avatar: "👨‍💼",
       social: { twitter: "@alexr", linkedin: "alexrodriguez" },
       gradient: "from-blue-500 to-cyan-500",
@@ -69,7 +69,7 @@ const AboutUs = () => {
     {
       name: "Emma Thompson",
       role: "Head of Growth",
-      bio: "Growth hacker who scaled 3 startups to $10M ARR. Helps creators discover and love Tubify.",
+      bio: "Growth hacker who scaled 3 startups to $10M ARR. Helps creators discover and love Tubehi.",
       avatar: "👩‍🚀",
       social: { twitter: "@emmat", linkedin: "emmathompson" },
       gradient: "from-orange-500 to-red-500",
@@ -133,7 +133,7 @@ const AboutUs = () => {
       year: "2024",
       title: "Global Expansion",
       description:
-        "Tubify reaches 89 countries. Voice recording and analytics features launched.",
+        "Tubehi reaches 89 countries. Voice recording and analytics features launched.",
       icon: Globe,
     },
     {
@@ -179,7 +179,7 @@ const AboutUs = () => {
             </h1>
 
             <p className="text-xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
-              Tubify started as a simple idea: what if creating professional
+              Tubehi started as a simple idea: what if creating professional
               videos was as easy as having a conversation? Today, we're
               empowering creators worldwide to tell their stories with
               confidence and clarity.
@@ -398,7 +398,7 @@ const AboutUs = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-6">
-              Life at Tubify
+              Life at Tubehi
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               We're building more than a product – we're building a culture of
@@ -476,7 +476,7 @@ const AboutUs = () => {
                   className="border-2 border-white text-white font-bold px-8 py-4 rounded-xl hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2"
                 >
                   <Play size={20} />
-                  <span>Try Tubify Free</span>
+                  <span>Try Tubehi Free</span>
                 </Link>
               </div>
             </div>

@@ -96,18 +96,12 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
       const audioElement = audioElementsRef.current.get(itemId);
       if (audioElement) {
         const finalVolume = clampedVolume * volume;
-        console.log(
-          `Audio volume: item=${clampedVolume}, master=${volume}, final=${finalVolume}`
-        );
         audioElement.volume = finalVolume;
       }
 
       const item = timelineItems.find((t) => t.id === itemId);
       if (item && item.trackType === "main" && videoRef.current) {
         const finalVolume = clampedVolume * volume;
-        console.log(
-          `Video volume: item=${clampedVolume}, master=${volume}, final=${finalVolume}`
-        );
         videoRef.current.volume = finalVolume;
       }
     },
@@ -312,11 +306,6 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
 
   const handleOpacityChange = useCallback(
     (itemId, opacityDecimal) => {
-      console.log("VideoEditor opacity change:", {
-        itemId,
-        opacityDecimal,
-      });
-
       const clampedOpacity = Math.max(0, Math.min(1, opacityDecimal));
 
       setTimelineItems((items) =>

@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import TubifyLanding from "../pages/TubifyLanding";
+import TubehiLanding from "../pages/TubehiLanging";
 import AuthPage from "../Auth/AuthPage";
 import HelpCenter from "../pages/HelpCenter";
 import AboutUs from "../pages/AboutUs";
@@ -11,6 +11,9 @@ import LoadingScreen from "../common/LoadingScreen";
 import TermsOfUsePage from "../pages/TermsOfUsePage";
 import PrivacyPolicyPage from "../pages/PrivacyPolicyPage";
 import { ROUTES } from "../constants/routes";
+// TODO ADD NEXT
+// import PaymentSuccess from "../PaymentSuccess";
+import Pricing from "../Pricing";
 
 const AppRouter = () => {
   const { loading } = useAuth();
@@ -21,11 +24,18 @@ const AppRouter = () => {
 
   return (
     <Routes>
-      <Route path={ROUTES.HOME} element={<TubifyLanding />} />
+      <Route path={ROUTES.HOME} element={<TubehiLanding />} />
       <Route path={ROUTES.AUTH} element={<AuthPage />} />
       <Route path={ROUTES.HELP_CENTER} element={<HelpCenter />} />
       <Route path={ROUTES.ABOUT_US} element={<AboutUs />} />
-
+      <Route
+        path={ROUTES.PRICING}
+        element={
+          <ProtectedRoute>
+            <Pricing />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path={ROUTES.APP}
         element={
@@ -82,7 +92,7 @@ const AppRouter = () => {
       <Route path={ROUTES.TERMS_OF_USE} element={<TermsOfUsePage />} />
       <Route path={ROUTES.PRIVACY_POLICY} element={<PrivacyPolicyPage />} />
 
-      <Route path={ROUTES.NOT_FOUND} element={<TubifyLanding />} />
+      <Route path={ROUTES.NOT_FOUND} element={<TubehiLanding />} />
     </Routes>
   );
 };

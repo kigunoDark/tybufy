@@ -11,7 +11,7 @@ const LoadingScreen = () => {
         <div className="flex items-center justify-center space-x-3 mb-4">
           <Loader2 size={24} className="animate-spin text-blue-600" />
           <span className="text-xl font-semibold text-gray-700">
-            Loading Tubify...
+            Loading Tubehi...
           </span>
         </div>
 
