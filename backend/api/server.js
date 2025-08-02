@@ -253,12 +253,12 @@ require("dotenv").config();
 
 const app = express();
 
-const authRoutes = require("./routes/auth");
-const paymentsRoutes = require("./routes/payments");
-const scriptRoutes = require("./routes/script");
-const audioRoutes = require("./routes/audio");
-const thumbnailRoutes = require("./routes/thumbnails");
-const projectRoutes = require("./routes/projects");
+const authRoutes = require("../routes/auth");
+const paymentsRoutes = require("../routes/payments");
+const scriptRoutes = require("../routes/script");
+const audioRoutes = require("../routes/audio");
+const thumbnailRoutes = require("../routes/thumbnails");
+const projectRoutes = require("../routes/projects");
 
 const corsOptions = {
   origin: [
