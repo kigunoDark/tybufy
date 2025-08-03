@@ -53,7 +53,6 @@ class MediaStorage {
 
         request.onsuccess = () => {
           this.db = request.result;
-          console.log("IndexedDB initialized successfully");
           resolve(this.db);
         };
 
@@ -66,9 +65,8 @@ class MediaStorage {
                 keyPath: "id",
               });
               fileStore.createIndex("type", "type");
-              fileStore.createIndex("mediaType", "mediaType"); // ✅ Добавляем индекс для mediaType
+              fileStore.createIndex("mediaType", "mediaType");
               fileStore.createIndex("createdAt", "createdAt");
-              console.log("IndexedDB store created");
             }
           } catch (upgradeError) {
             console.error("IndexedDB upgrade error:", upgradeError);
@@ -88,14 +86,12 @@ class MediaStorage {
   }
 
   async initFallback() {
-    console.log("Initializing fallback storage mode");
     this.fallbackMode = true;
 
     this.memoryStorage.clear();
 
     try {
       localStorage.removeItem("mediaFiles");
-      console.log("Cleared old localStorage data for fresh start");
     } catch (error) {
       console.warn("Failed to clear localStorage:", error);
     }
@@ -103,7 +99,6 @@ class MediaStorage {
     return true;
   }
 
-  // ✅ Проверка размера файла перед сохранением
   checkFileSize(file) {
     if (file.size > this.limits.maxFileSize) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
@@ -193,10 +188,6 @@ class MediaStorage {
   async saveToFallback(fileData) {
     try {
       this.memoryStorage.set(fileData.id.toString(), fileData);
-
-      console.log(
-        `Saved file ${fileData.name} to memory storage (fallback mode)`
-      );
 
       this.updateStorageInfo();
       return fileData;
@@ -380,8 +371,6 @@ class MediaStorage {
           }
         }
       }
-
-      console.log(`Cleaned up ${expiredCount} expired files`);
       return expiredCount;
     } catch (error) {
       console.error("Cleanup error:", error);

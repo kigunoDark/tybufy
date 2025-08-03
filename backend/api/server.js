@@ -82,7 +82,6 @@ if (process.env.NODE_ENV === "development" && !process.env.VERCEL) {
     try {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
-        console.log(`📁 Created directory: ${dir}`);
       }
     } catch (error) {
       console.warn(`⚠️ Could not create directory ${dir}:`, error.message);

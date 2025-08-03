@@ -47,18 +47,11 @@ class JWTService {
     const refreshTime = timeUntilExpiry - 5 * 60 * 1000;
 
     if (refreshTime > 0) {
-      console.log(
-        `🔄 Token refresh scheduled in ${Math.floor(
-          refreshTime / 1000 / 60
-        )} minutes`
-      );
 
       setTimeout(() => {
-        console.log("🔄 Auto-refreshing token...");
         refreshCallback();
       }, refreshTime);
     } else if (timeUntilExpiry > 0) {
-      console.log("⚠️ Token expires soon, refreshing immediately");
       refreshCallback();
     }
   }
@@ -68,7 +61,6 @@ class JWTService {
       localStorage.removeItem("authToken");
       localStorage.removeItem("userData");
       localStorage.removeItem("refreshToken");
-      console.log("🧹 Auth data cleared");
     } catch (error) {
       console.error("Error clearing auth data:", error);
     }

@@ -122,7 +122,6 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem("authToken");
 
         if (!token) {
-          console.log("❌ No auth token found");
           return;
         }
 

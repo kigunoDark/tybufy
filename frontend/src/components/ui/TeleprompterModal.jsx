@@ -856,7 +856,7 @@ export const TeleprompterModal = ({
         videoElement.srcObject = streamRef.current;
         videoElement
           .play()
-          .catch((e) => console.log("UseEffect play error:", e));
+          .catch((e) => console.error("UseEffect play error:", e));
       }
     }
   }, [isRecording, recordingType, streamRef.current]);

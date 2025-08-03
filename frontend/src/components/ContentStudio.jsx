@@ -87,24 +87,6 @@ const ContentStudio = ({
     { id: "chinese", name: "中文", flag: "🇨🇳" },
   ];
 
-  const handleAudioSaved = (savedFiles) => {
-    console.log("🎵 Аудио сохранено в MediaLibrary:", savedFiles);
-
-    // Уведомляем родительский компонент (например, главное приложение)
-    if (onAudioSaved) {
-      onAudioSaved(savedFiles);
-    }
-
-    // Опционально: показываем уведомление
-    if (savedFiles.length > 1) {
-      console.log(
-        `✅ Сохранено ${savedFiles.length} частей аудио в Media Library`
-      );
-    } else {
-      console.log(`✅ Аудио "${savedFiles[0].name}" сохранено в Media Library`);
-    }
-  };
-
   useEffect(() => {
     const fetchVoices = async () => {
       if (!isAuthenticated) return;
