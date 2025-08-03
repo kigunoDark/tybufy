@@ -1,7 +1,8 @@
-
 [build]
 builder = "nixpacks"
-workingDirectory = "backend"
 
 [deploy]
 startCommand = "npm start"
+healthcheckPath = "/"
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 10
