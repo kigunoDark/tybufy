@@ -233,10 +233,6 @@ app.listen(PORT, () => {
       process.env.FRONTEND_URL || "http://localhost:3000"
     }`
   );
-  console.log(
-    `🤖 AI Services: OpenAI=${!!process.env
-      .OPENAI_API_KEY}, ElevenLabs=${!!process.env.ELEVENLABS_API_KEY}`
-  );
 });
 
 module.exports = app;
