@@ -25,8 +25,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "npm run build",
-    "dev": "npm run dev",
+    "build": "react-scripts build",
+    "dev": "react-scripts start",
     "serve": "serve -s build -l $PORT",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
