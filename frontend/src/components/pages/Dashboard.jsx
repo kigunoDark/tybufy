@@ -237,11 +237,6 @@ const Dashboard = () => {
                         size={28} 
                         className={isFeatureDisabled ? "text-gray-400" : "text-white"} 
                       />
-                      {isFeatureDisabled && (
-                        <div className="absolute inset-0 bg-gray-500/20 rounded-2xl flex items-center justify-center">
-                          <Lock size={16} className="text-gray-500" />
-                        </div>
-                      )}
                     </div>
 
                     <h3 className="text-lg font-bold text-gray-600 mb-2">
