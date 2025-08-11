@@ -24,7 +24,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "chmod +x node_modules/.bin/vite && vite build",
+    "build": "react-scripts build",
     "dev": "react-scripts start",
     "serve": "serve -s build -l $PORT",
     "test": "react-scripts test",
