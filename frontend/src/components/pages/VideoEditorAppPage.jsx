@@ -369,13 +369,6 @@ const VideoEditorApp = () => {
 
     const textLength = script.length;
 
-    if (textLength > 1800) {
-      const estimatedTime = Math.ceil(textLength / 1800) * 15; // ~15 сек на часть
-      console.log(
-        `⏱️ Длинный текст будет разбит на части. Ожидаемое время: ~${estimatedTime} секунд`
-      );
-    }
-
     setIsLoading(true);
 
     try {
