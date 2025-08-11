@@ -13,6 +13,7 @@ import {
   AlertCircle,
   ArrowRight,
   Plus,
+  Lock,
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -26,6 +27,7 @@ const Dashboard = () => {
       link: "/app/video-maker",
       gradient: "from-blue-500 to-purple-500",
       primary: true,
+      disabled: false,
     },
     {
       title: "Generate Script",
@@ -33,6 +35,7 @@ const Dashboard = () => {
       icon: Brain,
       link: "/app/script-generator",
       gradient: "from-green-500 to-teal-500",
+      disabled: true,
     },
     {
       title: "Thumbnail Generator",
@@ -40,6 +43,7 @@ const Dashboard = () => {
       icon: Mic,
       link: "/app/thumbnail",
       gradient: "from-orange-500 to-red-500",
+      disabled: true,
     },
     {
       title: "My Videos",
@@ -47,6 +51,7 @@ const Dashboard = () => {
       icon: Play,
       link: "/app/my-videos",
       gradient: "from-purple-500 to-pink-500",
+      disabled: true,
     },
   ];
 
@@ -182,41 +187,80 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {quickActions.map((action, index) => {
             const IconComponent = action.icon;
-            const isDisabled = planInfo.videosLeft === 0 && action.primary;
+            const isPlanDisabled = planInfo.videosLeft === 0 && action.primary;
+            const isFeatureDisabled = action.disabled;
+            const isDisabled = isPlanDisabled || isFeatureDisabled;
 
             return (
-              <Link
+              <div
                 key={index}
-                to={isDisabled || action.disabled ? "#" : action.link}
-                className={`group bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 ${
+                className={`group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border shadow-xl transition-all duration-300 ${
                   isDisabled
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:scale-105 cursor-pointer"
-                }`}
-                onClick={isDisabled ? (e) => e.preventDefault() : undefined}
+                    ? "border-gray-200/70 opacity-75"
+                    : "border-slate-200/50 hover:shadow-2xl hover:scale-105 cursor-pointer"
+                } ${isFeatureDisabled ? "bg-gradient-to-br from-gray-50/80 to-gray-100/80" : ""}`}
               >
-                <div
-                  className={`w-14 h-14 bg-gradient-to-br ${action.gradient} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
-                >
-                  <IconComponent size={28} className="text-white" />
-                </div>
+                {!isDisabled ? (
+                  <Link to={action.link} className="block">
+                    <div
+                      className={`w-14 h-14 bg-gradient-to-br ${action.gradient} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+                    >
+                      <IconComponent size={28} className="text-white" />
+                    </div>
 
-                <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
-                  {action.title}
-                </h3>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
+                      {action.title}
+                    </h3>
 
-                <p className="text-gray-600 text-sm mb-4">
-                  {action.description}
-                </p>
+                    <p className="text-gray-600 text-sm mb-4">
+                      {action.description}
+                    </p>
 
-                <div className="flex items-center text-blue-600 font-medium text-sm">
-                  <span>Get started</span>
-                  <ArrowRight
-                    size={14}
-                    className="ml-1 group-hover:translate-x-1 transition-transform"
-                  />
-                </div>
-              </Link>
+                    <div className="flex items-center text-blue-600 font-medium text-sm">
+                      <span>Get started</span>
+                      <ArrowRight
+                        size={14}
+                        className="ml-1 group-hover:translate-x-1 transition-transform"
+                      />
+                    </div>
+                  </Link>
+                ) : (
+                  <div>
+                    <div
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 relative ${
+                        isFeatureDisabled 
+                          ? "bg-gray-200" 
+                          : `bg-gradient-to-br ${action.gradient}`
+                      }`}
+                    >
+                      <IconComponent 
+                        size={28} 
+                        className={isFeatureDisabled ? "text-gray-400" : "text-white"} 
+                      />
+                      {isFeatureDisabled && (
+                        <div className="absolute inset-0 bg-gray-500/20 rounded-2xl flex items-center justify-center">
+                          <Lock size={16} className="text-gray-500" />
+                        </div>
+                      )}
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-600 mb-2">
+                      {action.title}
+                    </h3>
+
+                    <p className="text-gray-500 text-sm mb-4">
+                      {isFeatureDisabled ? "Coming in next update" : action.description}
+                    </p>
+
+                    <div className="flex items-center text-gray-400 font-medium text-sm">
+                      <span>
+                        {isPlanDisabled ? "Upgrade required" : "Coming soon"}
+                      </span>
+                      {isFeatureDisabled && <Lock size={12} className="ml-1" />}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -232,7 +276,6 @@ const Dashboard = () => {
             const IconComponent = stat.icon;
             return (
               <div
-                disabled={stat.disabled}
                 key={index}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50 shadow-xl"
               >
