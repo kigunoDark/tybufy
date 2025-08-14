@@ -105,6 +105,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
         videoRef.current.volume = finalVolume;
       }
     },
+    
     [timelineItems, volume]
   );
 
@@ -1220,7 +1221,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
         timelineItems={timelineItems}
         tracks={tracks}
         videoDuration={videoDuration}
-        overlayTransforms={overlayTransforms} // ✅ ДОБАВЬТЕ ЭТУ СТРОКУ
+        overlayTransforms={overlayTransforms} 
       />
     </div>
   );

@@ -14,6 +14,7 @@ const authRoutes = require("../routes/auth");
 const paymentsRoutes = require("../routes/payments");
 const scriptRoutes = require("../routes/script");
 const audioRoutes = require("../routes/audio");
+const renderRoutes = require("../routes/render");
 const thumbnailRoutes = require("../routes/thumbnails");
 const projectRoutes = require("../routes/projects");
 
@@ -176,6 +177,7 @@ app.use("/api/script", scriptRoutes);
 app.use("/api/audio", audioRoutes);
 app.use("/api/thumbnails", thumbnailRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/render", renderRoutes);
 
 app.get("/health", (req, res) => {
   res.json({

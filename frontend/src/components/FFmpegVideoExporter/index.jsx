@@ -24,7 +24,6 @@ const FFmpegVideoExporter = ({
 }) => {
   const actualTimelineItems = React.useMemo(() => {
     const items = timelineItems || timelineData || elements || clips || mediaItems || [];
-
     return items;
   }, [timelineItems, timelineData, elements, clips, mediaItems]);
 
@@ -36,17 +35,13 @@ const FFmpegVideoExporter = ({
     includeAudio: true,
   });
 
-  const [ffmpeg, setFfmpeg] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStage, setExportStage] = useState("idle");
-  const [previewFrame, setPreviewFrame] = useState(null);
   const [error, setError] = useState(null);
+  const [downloadUrl, setDownloadUrl] = useState(null);
 
-  const canvasRef = useRef(null);
-  const previewCanvasRef = useRef(null);
-  const mediaCache = useRef(new Map());
+  // Модалки для создания обложек
   const [showThumbnailQuestion, setShowThumbnailQuestion] = useState(false);
   const [showThumbnailCreator, setShowThumbnailCreator] = useState(false);
 
@@ -56,7 +51,6 @@ const FFmpegVideoExporter = ({
 
   const handleThumbnailResponse = (wantThumbnail) => {
     setShowThumbnailQuestion(false);
-
     if (wantThumbnail) {
       setShowThumbnailCreator(true);
     } else {
@@ -86,581 +80,81 @@ const FFmpegVideoExporter = ({
       )
     );
 
-    const calculatedDuration = Math.min(maxEndTime, 30);
-    return calculatedDuration;
+    return Math.min(maxEndTime, 30);
   };
 
-
-  useEffect(() => {
-    const initFFmpeg = async () => {
-      if (ffmpeg || !isOpen) return;
-
-      setIsLoading(true);
-      setExportStage("loading");
-      setError(null);
-
-      try {
-        const ffmpegModule = await import("@ffmpeg/ffmpeg");
-        const utilModule = await import("@ffmpeg/util");
-
-        const FFmpegClass = ffmpegModule.FFmpeg;
-        const fetchFile = utilModule.fetchFile;
-
-        const ffmpegInstance = new FFmpegClass();
-
-        await ffmpegInstance.load({
-          coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js",
-          wasmURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm",
-        });
-
-        ffmpegInstance.on("progress", ({ progress }) => {
-          if (isExporting) {
-            const adjustedProgress = 70 + Math.round(progress * 25);
-            setExportProgress(Math.min(adjustedProgress, 95));
-          }
-        });
-
-        window.fetchFile = fetchFile;
-        setFfmpeg(ffmpegInstance);
-        setExportStage("ready");
-      } catch (error) {
-        console.error("❌ Ошибка FFmpeg:", error);
-        setError(error.message);
-        setExportStage("error");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (isOpen) {
-      initFFmpeg();
-    }
-  }, [isOpen]);
-
-  const loadMediaElement = async (item) => {
-    if (!item.url) {
-      console.error(`❌ URL отсутствует для ${item.name}`);
-      return null;
-    }
-
-    const cacheKey = `${item.id}_${item.url}`;
-    if (mediaCache.current.has(cacheKey)) {
-      return mediaCache.current.get(cacheKey);
-    }
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error(`Timeout loading ${item.name}`));
-      }, 10000);
-
-      const isVideo = item.type === "videos" || item.trackType === "main" ||
-        item.name?.toLowerCase().includes(".mp4") ||
-        item.name?.toLowerCase().includes(".webm") ||
-        item.name?.toLowerCase().includes(".mov");
-
-      if (isVideo) {
-        const video = document.createElement("video");
-        if (!item.url.startsWith("blob:")) {
-          video.crossOrigin = "anonymous";
-        }
-        video.muted = true;
-        video.preload = "metadata";
-
-        video.onloadedmetadata = () => {
-          clearTimeout(timeout);
-          mediaCache.current.set(cacheKey, video);
-          resolve(video);
-        };
-
-        video.onerror = (e) => {
-          console.error(`❌ Ошибка загрузки видео ${item.name}:`, e);
-          clearTimeout(timeout);
-          reject(new Error(`Failed to load video: ${item.name}`));
-        };
-
-        video.src = item.url;
-        video.load();
-      } else {
-        const img = new Image();
-        if (!item.url.startsWith("blob:")) {
-          img.crossOrigin = "anonymous";
-        }
-
-        img.onload = () => {
-          clearTimeout(timeout);
-          mediaCache.current.set(cacheKey, img);
-          resolve(img);
-        };
-
-        img.onerror = (e) => {
-          console.error(`❌ Ошибка загрузки изображения ${item.name}:`, e);
-          clearTimeout(timeout);
-          reject(new Error(`Failed to load image: ${item.name}`));
-        };
-
-        img.src = item.url;
-      }
-    });
-  };
-
-  const renderFrameAtTime = async (ctx, currentTime, width, height) => {
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, width, height);
-
-    const activeItems = actualTimelineItems.filter((item) => {
-      const startTime = item.startTime || 0;
-      const duration = item.duration || 0;
-      const endTime = startTime + duration;
-      const isActive = currentTime >= startTime && currentTime <= endTime;
-
-      return isActive;
-    });
-
-    if (activeItems.length === 0) {
-      ctx.fillStyle = "#333333";
-      ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `${Math.min(48, width / 20)}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(`Время: ${currentTime.toFixed(1)}s`, width / 2, height / 2 - 30);
-      ctx.fillText(`Нет активных элементов`, width / 2, height / 2 + 30);
-      return;
-    }
-    const sortedItems = activeItems.sort((a, b) => {
-      const layerOrder = { main: 1, overlay: 2, audio: 0 };
-      return (layerOrder[a.trackType] || 1) - (layerOrder[b.trackType] || 1);
-    });
-
-    for (const item of sortedItems) {
-      if (item.trackType === "audio") continue;
-
-      try {
-        const element = await loadMediaElement(item);
-
-        if (element) {
-          const relativeTime = currentTime - (item.startTime || 0);
-          await drawElementOnCanvas(ctx, element, item, relativeTime, width, height);
-        }
-      } catch (error) {
-        console.error(`❌ Ошибка рендеринга ${item.name}:`, error);
-      }
-    }
-  };
-
-  const drawElementOnCanvas = async (ctx, element, item, relativeTime, canvasWidth, canvasHeight) => {
+  // Серверный экспорт через ваш API
+  const exportWithServer = async () => {
     try {
-      if (element.tagName === "VIDEO") {
-        const trimStart = item.trimStart || 0;
-        const maxTime = Math.min(
-          element.duration || item.duration || 0,
-          item.duration || element.duration || 0
-        );
-        const targetTime = Math.max(0, Math.min(trimStart + relativeTime, maxTime));
+      setExportStage("preparing");
+      setExportProgress(10);
 
-        if (Math.abs(element.currentTime - targetTime) > 0.1) {
-          element.currentTime = targetTime;
-          await new Promise((resolve) => {
-            const checkReady = () => {
-              if (element.readyState >= 2) {
-                resolve();
-              } else {
-                setTimeout(checkReady, 10);
-              }
-            };
-            checkReady();
-            setTimeout(resolve, 200);
-          });
-        }
+      // Подготавливаем данные в формате вашего API
+      const timelineForServer = actualTimelineItems.map(item => ({
+        type: item.type === "videos" ? "videos" : 
+              item.trackType === "audio" ? "audios" : "images",
+        url: item.url,
+        startTime: item.startTime || 0,
+        duration: item.duration || 0,
+        name: item.name,
+      }));
+
+      setExportStage("uploading");
+      setExportProgress(30);
+
+      const response = await fetch("/api/render", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          timeline: timelineForServer
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
       }
 
-      const elementWidth = element.videoWidth || element.naturalWidth || element.width;
-      const elementHeight = element.videoHeight || element.naturalHeight || element.height;
+      const result = await response.json();
 
-      if (!elementWidth || !elementHeight) return;
-
-      let drawWidth, drawHeight, drawX, drawY;
-
-      if (item.trackType === "main") {
-        const canvasRatio = canvasWidth / canvasHeight;
-        const elementRatio = elementWidth / elementHeight;
-
-        if (elementRatio > canvasRatio) {
-          drawWidth = canvasWidth;
-          drawHeight = canvasWidth / elementRatio;
-          drawX = 0;
-          drawY = (canvasHeight - drawHeight) / 2;
-        } else {
-          drawHeight = canvasHeight;
-          drawWidth = canvasHeight * elementRatio;
-          drawX = (canvasWidth - drawWidth) / 2;
-          drawY = 0;
-        }
-      } else if (item.trackType === "overlay") {
-        
-        const overlayCoords = overlayTransforms[item.id];
-        
-        if (overlayCoords) {
-          const baseX = 200 + (overlayCoords.x || 0);
-          const baseY = 50 + (overlayCoords.y || 0);
-          const scale = overlayCoords.scale || 1;
-          
-          const scaleX = canvasWidth / 1920;
-          const scaleY = canvasHeight / 1080;
-          
-          drawX = baseX * scaleX;
-          drawY = baseY * scaleY;
-          drawWidth = 256 * scale * scaleX;
-          drawHeight = 192 * scale * scaleY;
-        } else {
-          drawX = canvasWidth * 0.6;
-          drawY = canvasHeight * 0.1;
-          drawWidth = canvasWidth * 0.3;
-          drawHeight = canvasHeight * 0.3;
-        }
-      }
-
-      ctx.save();
-
-      if (item.rotation && item.rotation !== 0) {
-        const centerX = drawX + drawWidth / 2;
-        const centerY = drawY + drawHeight / 2;
-        ctx.translate(centerX, centerY);
-        ctx.rotate((item.rotation * Math.PI) / 180);
-        ctx.translate(-centerX, -centerY);
-      }
-
-      const opacity = item.opacity !== undefined ? item.opacity : 1;
-      ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-
-      if (element.tagName === "IMG") {
-        if (item.type === "images" || element.src.includes(".png")) {
-          const tempCanvas = document.createElement("canvas");
-          tempCanvas.width = elementWidth;
-          tempCanvas.height = elementHeight;
-          const tempCtx = tempCanvas.getContext("2d", { alpha: false });
-
-          tempCtx.fillStyle = "#000000";
-          tempCtx.fillRect(0, 0, elementWidth, elementHeight);
-          tempCtx.drawImage(element, 0, 0);
-
-          ctx.drawImage(tempCanvas, drawX, drawY, drawWidth, drawHeight);
-        } else {
-          ctx.drawImage(element, drawX, drawY, drawWidth, drawHeight);
-        }
+      if (result.success) {
+        // Ваш API возвращает готовый URL
+        setDownloadUrl(result.url);
+        setExportProgress(100);
+        setExportStage("completed");
       } else {
-        ctx.drawImage(element, drawX, drawY, drawWidth, drawHeight);
+        throw new Error(result.error || "Server export failed");
       }
 
-      ctx.restore();
     } catch (error) {
-      console.error(`❌ Ошибка отрисовки ${item.name}:`, error);
-      throw error;
+      console.error("❌ Server export error:", error);
+      setError(error.message);
+      setExportStage("error");
     }
-  };
-
-  const generatePreviewFrame = async () => {
-    try {
-      const canvas = previewCanvasRef.current;
-      if (!canvas) return;
-
-      const ctx = canvas.getContext("2d", { alpha: false });
-      const [width, height] = exportSettings.resolution.split("x").map(Number);
-      canvas.width = width;
-      canvas.height = height;
-
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, width, height);
-
-      const firstItem = actualTimelineItems.find((item) => item.trackType === "main");
-      let previewTime = 0;
-
-      if (firstItem) {
-        const itemStart = firstItem.startTime || 0;
-        const itemDuration = firstItem.duration || 0;
-        previewTime = itemStart + itemDuration / 2;
-      } else {
-        const totalDuration = calculateTotalDuration();
-        previewTime = totalDuration / 2;
-      }
-
-      await renderFrameAtTime(ctx, previewTime, width, height);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          setPreviewFrame(url);
-        }
-      }, "image/png");
-    } catch (error) {
-      console.warn("⚠️ Ошибка создания превью:", error);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen && actualTimelineItems.length > 0 && exportStage === "ready") {
-      generatePreviewFrame();
-    }
-  }, [isOpen, actualTimelineItems, exportSettings.resolution, exportStage]);
-
-  const prepareAudioFiles = async () => {
-    if (!exportSettings.includeAudio) return [];
-
-    const audioItems = actualTimelineItems.filter((item) => item.trackType === "audio");
-    const audioFiles = [];
-
-    for (let i = 0; i < Math.min(audioItems.length, 3); i++) {
-      const item = audioItems[i];
-      try {
-        const response = await fetch(item.url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const blob = await response.blob();
-        audioFiles.push({
-          blob,
-          startTime: item.startTime || 0,
-          duration: item.duration || videoDuration,
-          name: item.name,
-          index: i,
-        });
-      } catch (error) {
-        console.warn(`⚠️ Ошибка загрузки аудио ${item.name}:`, error);
-      }
-    }
-
-    return audioFiles;
-  };
-
-  const renderAllFrames = async (duration) => {
-    const canvas = canvasRef.current;
-    if (!canvas) throw new Error("Canvas не найден");
-
-    const ctx = canvas.getContext("2d", { alpha: false });
-    const [width, height] = exportSettings.resolution.split("x").map(Number);
-    canvas.width = width;
-    canvas.height = height;
-
-    const totalFrames = Math.ceil(duration * exportSettings.fps);
-    const frames = [];
-    const maxFrames = Math.min(totalFrames, 1200);
-
-    for (let frame = 0; frame < maxFrames; frame++) {
-      const currentTime = frame / exportSettings.fps;
-      if (currentTime >= duration) break;
-
-      try {
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, width, height);
-
-        await renderFrameAtTime(ctx, currentTime, width, height);
-
-        const blob = await new Promise((resolve) => {
-          const hasImages = actualTimelineItems.some(
-            (item) => item.type !== "videos" && item.trackType !== "audio"
-          );
-
-          if (hasImages) {
-            canvas.toBlob(resolve, "image/png");
-          } else {
-            canvas.toBlob(resolve, "image/jpeg", 0.85);
-          }
-        });
-
-        if (blob) {
-          frames.push(blob);
-          if (frame < 5) {
-            const activeItemsForDiag = actualTimelineItems.filter((item) => {
-              const startTime = item.startTime || 0;
-              const duration = item.duration || 0;
-              const endTime = startTime + duration;
-              return currentTime >= startTime && currentTime <= endTime;
-            });
-            
-          }
-        }
-
-        const progress = 15 + Math.round((frame / maxFrames) * 35);
-        setExportProgress(progress);
-
-        if (frame % 100 === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 1));
-        }
-      } catch (error) {
-        console.error(`❌ Ошибка рендеринга кадра ${frame}:`, error);
-        break;
-      }
-    }
-
-    return frames;
-  };
-
-  const encodeWithFFmpeg = async (frames, audioFiles, duration) => {
-    if (!window.fetchFile || frames.length === 0) {
-      throw new Error("Нет кадров для кодирования");
-    }
-
-    try {
-      await cleanupTempFiles(2000, 5);
-
-      const hasImages = actualTimelineItems.some(
-        (item) => item.type !== "videos" && item.trackType !== "audio"
-      );
-
-      for (let i = 0; i < frames.length; i++) {
-        const frameData = await window.fetchFile(frames[i]);
-
-        if (hasImages) {
-          const filename = `frame_${i.toString().padStart(6, "0")}.png`;
-          await ffmpeg.writeFile(filename, frameData);
-        } else {
-          const filename = `frame_${i.toString().padStart(6, "0")}.jpg`;
-          await ffmpeg.writeFile(filename, frameData);
-        }
-
-        if (i % 50 === 0) {
-          const progress = 60 + Math.round((i / frames.length) * 10);
-          setExportProgress(progress);
-        }
-      }
-
-      for (let i = 0; i < audioFiles.length; i++) {
-        const audioFile = audioFiles[i];
-        const audioFileName = `audio_${i}.mp3`;
-        await ffmpeg.writeFile(audioFileName, await window.fetchFile(audioFile.blob));
-      }
-
-      setExportProgress(70);
-
-      const args = [
-        "-framerate", exportSettings.fps.toString()
-      ];
-
-      if (hasImages) {
-        args.push("-i", "frame_%06d.png");
-      } else {
-        args.push("-i", "frame_%06d.jpg");
-      }
-
-      if (audioFiles.length > 0) {
-        args.push("-i", "audio_0.mp3");
-        args.push("-map", "0:v");
-        args.push("-map", "1:a"); 
-      }
-
-      args.push("-t", duration.toString());
-      args.push(
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "30",
-        "-pix_fmt", "yuv420p",
-        "-profile:v", "baseline",
-        "-level", "3.0",
-        "-r", "24",
-        "-g", "24",
-        "-bf", "0",
-        "-refs", "1"
-      );
-
-      if (audioFiles.length > 0) {
-        args.push(
-          "-c:a", "aac",
-          "-b:a", "96k",
-          "-ar", "44100",
-          "-ac", "2",
-          "-strict", "-2"
-        );
-      }
-
-      args.push(
-        "-movflags", "+faststart",
-        "output.mp4"
-      );
-
-      await ffmpeg.exec(args);
-
-      setExportProgress(90);
-
-      const data = await ffmpeg.readFile("output.mp4");
-      const videoBlob = new Blob([data.buffer], { type: "video/mp4" });
-
-      await cleanupTempFiles(frames.length, audioFiles.length);
-      return videoBlob;
-    } catch (error) {
-      try {
-        await cleanupTempFiles(frames.length, audioFiles.length);
-      } catch (e) {}
-
-      throw new Error(`Ошибка кодирования: ${error.message}`);
-    }
-  };
-
-  const cleanupTempFiles = async (frameCount, audioCount) => {
-    for (let i = 0; i < frameCount; i++) {
-      try {
-        await ffmpeg.deleteFile(`frame_${i.toString().padStart(6, "0")}.png`);
-      } catch (e) {}
-      try {
-        await ffmpeg.deleteFile(`frame_${i.toString().padStart(6, "0")}.jpg`);
-      } catch (e) {}
-    }
-
-    for (let i = 0; i < audioCount; i++) {
-      try {
-        await ffmpeg.deleteFile(`audio_${i}.mp3`);
-      } catch (e) {}
-    }
-
-    try {
-      await ffmpeg.deleteFile("output.mp4");
-    } catch (e) {}
   };
 
   const startExport = async () => {
-    if (!ffmpeg || isExporting || actualTimelineItems.length === 0) return;
+    if (isExporting || actualTimelineItems.length === 0) return;
 
     setIsExporting(true);
     setExportProgress(0);
     setExportStage("preparing");
     setError(null);
+    setDownloadUrl(null);
 
     try {
-      const totalDuration = calculateTotalDuration();
-      const actualDuration = totalDuration;
+      await exportWithServer();
 
-      setExportStage("rendering_frames");
-      const frames = await renderAllFrames(actualDuration);
-      setExportProgress(50);
+      // Показываем вопрос о создании обложки после успешного экспорта
+      if (exportStage === "completed") {
+        setTimeout(() => {
+          setShowThumbnailQuestion(true);
+        }, 1500);
+      }
 
-      setExportStage("processing_audio");
-      const audioFiles = await prepareAudioFiles();
-      setExportProgress(60);
-
-      setExportStage("encoding");
-      const videoBlob = await encodeWithFFmpeg(frames, audioFiles, actualDuration);
-
-      setExportProgress(95);
-
-      setExportStage("downloading");
-      await downloadVideo(videoBlob);
-      setExportProgress(100);
-
-      setExportStage("completed");
-      
-     
-      setTimeout(() => {
-        setExportStage("ready");
-        setExportProgress(0);
-      }, 3000);
-      
-      // ✅ ПОКАЗЫВАЕМ ВОПРОС О СОЗДАНИИ ОБЛОЖКИ
-      setTimeout(() => {
-        setShowThumbnailQuestion(true);
-      }, 1500);
     } catch (error) {
-      console.error("❌ Ошибка экспорта:", error);
+      console.error("❌ Export error:", error);
       setError(error.message);
       setExportStage("error");
     } finally {
@@ -668,30 +162,25 @@ const FFmpegVideoExporter = ({
     }
   };
 
-  const downloadVideo = async (blob) => {
-    const filename = `${exportSettings.filename}.${exportSettings.format}`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const downloadVideo = () => {
+    if (downloadUrl) {
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `${exportSettings.filename}.${exportSettings.format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   const getStageText = () => {
     switch (exportStage) {
-      case "loading": return "Loading FFmpeg...";
-      case "preparing": return "Analyzing timeline...";
-      case "rendering_frames": return "Rendering frames...";
-      case "processing_audio": return "Preparing audio tracks...";
-      case "encoding": return "Encoding video...";
-      case "downloading": return "Saving file...";
-      case "completed": return "✅ Export completed! Video should play.";
-      case "error": return "An error occurred";
-      case "ready": return `Ready to export (${actualTimelineItems.length} elements)`;
-      default: return "Waiting...";
+      case "preparing": return "Preparing timeline data...";
+      case "uploading": return "Sending to server...";  
+      case "processing": return "Server is rendering video...";
+      case "completed": return "✅ Video ready for download!";
+      case "error": return "❌ Export failed";
+      default: return `Ready to export (${actualTimelineItems.length} elements)`;
     }
   };
 
@@ -699,23 +188,24 @@ const FFmpegVideoExporter = ({
     switch (exportStage) {
       case "completed": return <Check size={20} className="text-green-600" />;
       case "error": return <AlertCircle size={20} className="text-red-600" />;
-      case "ready": return <Play size={20} className="text-blue-600" />;
-      case "loading": return <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>;
-      default: return <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>;
+      default: return isExporting ? 
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div> :
+        <Play size={20} className="text-blue-600" />;
     }
   };
 
-  const canExport = ffmpeg && !isExporting && !isLoading && actualTimelineItems.length > 0 && exportStage === "ready";
+  const canExport = !isExporting && actualTimelineItems.length > 0;
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[100vh] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center">
             <Film size={24} className="mr-3 text-blue-600" />
-            🎬 Video Export with Overlay & Audio
+            Video Export
           </h2>
           <button
             onClick={onClose}
@@ -726,37 +216,24 @@ const FFmpegVideoExporter = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-6 max-h-[calc(95vh-140px)] overflow-y-auto">
-          {actualTimelineItems.length === 0 && (
-            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-6">
-              <div className="flex items-start">
-                <AlertCircle size={24} className="text-red-600 mr-3 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h4 className="font-bold text-red-800 text-lg mb-2">❌ NO TIMELINE DATA!</h4>
-                  <p className="text-red-700 mb-3">
-                    Export component is not receiving timeline data. Check props passing.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
+        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+          {/* Error Display */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <div className="flex items-start">
                 <AlertCircle size={20} className="text-red-600 mr-3 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-red-800">Error</h4>
+                  <h4 className="font-medium text-red-800">Export Error</h4>
                   <p className="text-sm text-red-600 mt-1">{error}</p>
                 </div>
               </div>
             </div>
           )}
 
+          {/* Progress Display */}
           <div className={`rounded-xl p-4 border ${
             exportStage === "error" ? "bg-red-50 border-red-200" :
             exportStage === "completed" ? "bg-green-50 border-green-200" :
-            exportStage === "loading" ? "bg-orange-50 border-orange-200" :
             "bg-blue-50 border-blue-200"
           }`}>
             <div className="flex items-center justify-between mb-3">
@@ -765,39 +242,34 @@ const FFmpegVideoExporter = ({
                 <span className={`ml-3 font-medium ${
                   exportStage === "error" ? "text-red-900" :
                   exportStage === "completed" ? "text-green-900" :
-                  exportStage === "loading" ? "text-orange-900" :
                   "text-blue-900"
                 }`}>
                   {getStageText()}
                 </span>
               </div>
-              {(isExporting || isLoading) && (
-                <span className={`text-sm font-medium ${
-                  exportStage === "loading" ? "text-orange-700" : "text-blue-700"
-                }`}>
+              {isExporting && (
+                <span className="text-sm font-medium text-blue-700">
                   {exportProgress}%
                 </span>
               )}
             </div>
-            {(isExporting || isLoading) && (
-              <div className={`w-full rounded-full h-2 ${
-                exportStage === "loading" ? "bg-orange-200" : "bg-blue-200"
-              }`}>
+            {isExporting && (
+              <div className="w-full bg-blue-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    exportStage === "loading" ? "bg-orange-600" : "bg-blue-600"
-                  }`}
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${exportProgress}%` }}
                 />
               </div>
             )}
           </div>
 
+          {/* Export Settings */}
           <div className="bg-gray-50 rounded-xl p-4">
             <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
               <Settings size={16} className="mr-2" />
               Export Settings
             </h3>
+            
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Resolution</label>
@@ -805,7 +277,7 @@ const FFmpegVideoExporter = ({
                   value={exportSettings.resolution}
                   onChange={(e) => setExportSettings(prev => ({ ...prev, resolution: e.target.value }))}
                   className="w-full p-2 text-sm border border-gray-300 rounded-lg"
-                  disabled={isExporting || isLoading}
+                  disabled={isExporting}
                 >
                   <option value="640x480">480p (fast)</option>
                   <option value="1280x720">720p (recommended)</option>
@@ -819,24 +291,24 @@ const FFmpegVideoExporter = ({
                   value={exportSettings.fps}
                   onChange={(e) => setExportSettings(prev => ({ ...prev, fps: parseInt(e.target.value) }))}
                   className="w-full p-2 text-sm border border-gray-300 rounded-lg"
-                  disabled={isExporting || isLoading}
+                  disabled={isExporting}
                 >
-                  <option value="24">24 FPS (standard)</option>
-                  <option value="30">30 FPS (smooth)</option>
-                  <option value="60">60 FPS (very smooth)</option>
+                  <option value="24">24 FPS</option>
+                  <option value="30">30 FPS</option>
+                  <option value="60">60 FPS</option>
                 </select>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">File name</label>
-                <input
-                  type="text"
-                  value={exportSettings.filename}
-                  onChange={(e) => setExportSettings(prev => ({ ...prev, filename: e.target.value }))}
-                  className="w-full p-2 text-sm border border-gray-300 rounded-lg"
-                  disabled={isExporting || isLoading}
-                />
-              </div>
+            <div className="mt-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1">File name</label>
+              <input
+                type="text"
+                value={exportSettings.filename}
+                onChange={(e) => setExportSettings(prev => ({ ...prev, filename: e.target.value }))}
+                className="w-full p-2 text-sm border border-gray-300 rounded-lg"
+                disabled={isExporting}
+              />
             </div>
 
             <div className="mt-4">
@@ -845,7 +317,7 @@ const FFmpegVideoExporter = ({
                   type="checkbox"
                   checked={exportSettings.includeAudio}
                   onChange={(e) => setExportSettings(prev => ({ ...prev, includeAudio: e.target.checked }))}
-                  disabled={isExporting || isLoading}
+                  disabled={isExporting}
                   className="rounded"
                 />
                 <span className="text-sm">Include audio</span>
@@ -853,68 +325,40 @@ const FFmpegVideoExporter = ({
             </div>
           </div>
 
+          {/* Timeline Info */}
           {actualTimelineItems.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h4 className="font-medium text-blue-800 mb-2">📊 Data Diagnostics</h4>
+              <h4 className="font-medium text-blue-800 mb-2">📊 Timeline Summary</h4>
               <div className="text-xs text-blue-700 space-y-1">
-                <p><strong>Timeline elements:</strong> {actualTimelineItems.length}</p>
-                <p><strong>Images:</strong> {actualTimelineItems.filter(item => item.type !== "videos" && item.trackType !== "audio").length}</p>
+                <p><strong>Total elements:</strong> {actualTimelineItems.length}</p>
                 <p><strong>Videos:</strong> {actualTimelineItems.filter(item => item.type === "videos").length}</p>
-                <p><strong>Audio:</strong> {actualTimelineItems.filter(item => item.trackType === "audio").length}</p>
-                <p><strong>Calculated duration:</strong> {calculateTotalDuration().toFixed(1)}s</p>
-                <p><strong>Overlay coordinates:</strong> {Object.keys(overlayTransforms).length}</p>
+                <p><strong>Images:</strong> {actualTimelineItems.filter(item => item.type !== "videos" && item.trackType !== "audio").length}</p>
+                <p><strong>Audio tracks:</strong> {actualTimelineItems.filter(item => item.trackType === "audio").length}</p>
+                <p><strong>Duration:</strong> {calculateTotalDuration().toFixed(1)}s</p>
               </div>
             </div>
           )}
 
-          {exportStage === "ready" && (
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Export Preview</h3>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <div className="bg-black rounded-lg aspect-video flex items-center justify-center overflow-hidden relative">
-                    {previewFrame ? (
-                      <img src={previewFrame} alt="Preview" className="max-w-full max-h-full object-contain" />
-                    ) : (
-                      <div className="text-white text-sm">Creating preview...</div>
-                    )}
-                    <button
-                      onClick={generatePreviewFrame}
-                      className="absolute top-2 right-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                    >
-                      Update Preview
-                    </button>
-                  </div>
-                </div>
-                <div className="w-48 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Resolution:</span>
-                    <span className="font-medium">{exportSettings.resolution}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">FPS:</span>
-                    <span className="font-medium">{exportSettings.fps}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Audio:</span>
-                    <span className="font-medium">{exportSettings.includeAudio ? "Enabled" : "Disabled"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Duration:</span>
-                    <span className="font-medium">{Math.round(calculateTotalDuration())}s</span>
-                  </div>
-                </div>
-              </div>
+          {/* Download Section */}
+          {exportStage === "completed" && downloadUrl && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <h4 className="font-medium text-green-800 mb-2">✅ Export Complete!</h4>
+              <button
+                onClick={downloadVideo}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
+              >
+                <Download size={16} className="mr-2" />
+                Download Video
+              </button>
             </div>
           )}
         </div>
 
+        {/* Footer */}
         <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
           <div className="text-xs text-gray-500">
-            {exportStage === "ready" && actualTimelineItems.length > 0
-              ? `Ready to export • ${actualTimelineItems.filter(i => i.trackType === "audio").length} audio • ${actualTimelineItems.filter(item => item.type !== "videos" && item.trackType !== "audio").length} images`
-              : exportStage === "loading"
-              ? "Loading FFmpeg..."
+            {actualTimelineItems.length > 0
+              ? `${actualTimelineItems.length} timeline elements • ${calculateTotalDuration().toFixed(1)}s duration`
               : "Add elements to timeline"}
           </div>
           <div className="flex space-x-3">
@@ -939,11 +383,6 @@ const FFmpegVideoExporter = ({
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Exporting... {exportProgress}%
                 </>
-              ) : isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Loading...
-                </>
               ) : (
                 <>
                   <Download size={16} className="mr-2" />
@@ -953,12 +392,9 @@ const FFmpegVideoExporter = ({
             </button>
           </div>
         </div>
-
-        <canvas ref={canvasRef} style={{ display: "none" }} />
-        <canvas ref={previewCanvasRef} style={{ display: "none" }} />
       </div>
       
-      {/* ✅ МОДАЛКИ ДЛЯ СОЗДАНИЯ ОБЛОЖЕК */}
+      {/* Модалки для создания обложек */}
       <ThumbnailQuestionModal
         isOpen={showThumbnailQuestion}
         onResponse={handleThumbnailResponse}
