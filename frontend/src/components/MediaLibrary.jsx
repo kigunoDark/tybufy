@@ -86,7 +86,6 @@ export const MediaLibrary = ({
     }
   };
 
-  // Сохранение файла в IndexedDB
   const saveFileToDB = async (fileData) => {
     if (!db) return false;
     
@@ -94,7 +93,6 @@ export const MediaLibrary = ({
       const transaction = db.transaction(['files'], 'readwrite');
       const store = transaction.objectStore('files');
       await store.add(fileData);
-      console.log('💾 Файл сохранен в DB:', fileData.name);
       return true;
     } catch (error) {
       console.error('❌ Ошибка сохранения в DB:', error);
@@ -102,7 +100,6 @@ export const MediaLibrary = ({
     }
   };
 
-  // Удаление файла из IndexedDB
   const deleteFileFromDB = async (fileId) => {
     if (!db) return;
     
@@ -110,13 +107,11 @@ export const MediaLibrary = ({
       const transaction = db.transaction(['files'], 'readwrite');
       const store = transaction.objectStore('files');
       await store.delete(fileId);
-      console.log('🗑️ Файл удален из DB:', fileId);
     } catch (error) {
       console.error('❌ Ошибка удаления из DB:', error);
     }
   };
 
-  // Очистка всех файлов
   const clearAllFiles = async () => {
     if (window.confirm('Удалить ВСЕ загруженные файлы? Это действие нельзя отменить.')) {
       try {
@@ -131,7 +126,6 @@ export const MediaLibrary = ({
           audios: [],
           images: []
         });
-        console.log('🗑️ Все файлы удалены');
       } catch (error) {
         console.error('❌ Ошибка очистки:', error);
       }
@@ -202,7 +196,6 @@ export const MediaLibrary = ({
     return metadata;
   };
 
-  // Обработка загрузки файлов
   const handleFileUpload = async (files, type) => {
     setError(null);
     setIsLoading(true);
@@ -211,43 +204,36 @@ export const MediaLibrary = ({
     
     for (const file of fileArray) {
       try {
-        console.log(`📂 Обрабатываем файл: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
-        
-        // Получаем метаданные
         const metadata = await getFileMetadata(file, type);
         
-        // Создаем объект файла для сохранения
         const fileData = {
           id: Date.now() + Math.random(),
           name: file.name,
-          type: type, // ✅ ИСПРАВЛЕНО: теперь "videos", "audios", "images"
-          mimeType: file.type, // MIME тип файла (video/mp4, audio/mp3, etc)
+          type: type,
+          mimeType: file.type,
           mediaType: type,
           size: file.size,
-          blob: file, // Сохраняем оригинальный blob
+          blob: file,
           duration: metadata.duration,
           width: metadata.width,
           height: metadata.height,
           createdAt: new Date().toISOString(),
         };
         
-        // Сохраняем в IndexedDB
         const saved = await saveFileToDB(fileData);
         
         if (saved) {
-          // Создаем URL для отображения
+
           const fileWithUrl = {
             ...fileData,
             url: URL.createObjectURL(file)
           };
-          
-          // Добавляем в состояние
+
           setMediaLibrary((prev) => ({
             ...prev,
             [type]: [...(prev[type] || []), fileWithUrl],
           }));
           
-          console.log(`✅ Файл загружен и сохранен: ${file.name}`);
         } else {
           setError(`Не удалось сохранить файл: ${file.name}`);
         }
@@ -261,7 +247,6 @@ export const MediaLibrary = ({
     setIsLoading(false);
   };
 
-  // Обработчики для каждого типа файлов
   const handleVideoUpload = async (event) => {
     const files = event.target.files;
     if (files?.length) {
@@ -286,7 +271,6 @@ export const MediaLibrary = ({
     }
   };
 
-  // Удаление отдельного файла
   const removeFromLibrary = async (itemId, type) => {
     await deleteFileFromDB(itemId);
     
@@ -294,7 +278,6 @@ export const MediaLibrary = ({
       ...prev,
       [type]: prev[type].filter((item) => item.id !== itemId),
     }));
-    console.log(`🗑️ Удален файл: ${itemId}`);
   };
 
   const handleDragStart = (e, mediaItem) => {

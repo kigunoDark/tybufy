@@ -30,8 +30,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isTimelineDragging, setIsTimelineDragging] = useState(false);
   const [copiedItem, setCopiedItem] = useState(null);
-  const { isExportModalOpen, openExportModal, closeExportModal } =
-    useFFmpegExporter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [isResizing, setIsResizing] = useState(false);
 
@@ -105,7 +104,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
         videoRef.current.volume = finalVolume;
       }
     },
-    
+
     [timelineItems, volume]
   );
 
@@ -1176,7 +1175,7 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
           handleVolumeChange={handleVolumeChange}
           timelineItems={timelineItems}
           setTimelineItems={setTimelineItems}
-          setShowExportModal={openExportModal}
+          setShowExportModal={() => setIsModalOpen(true)}
           currentTime={currentTime}
           videoDuration={videoDuration}
           setVideoDuration={setVideoDuration}
@@ -1216,12 +1215,11 @@ const VideoEditor = ({ mediaLibrary, setMediaLibrary }) => {
       </div>
 
       <FFmpegVideoExporter
-        isOpen={isExportModalOpen}
-        onClose={closeExportModal}
-        timelineItems={timelineItems}
-        tracks={tracks}
-        videoDuration={videoDuration}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        timelineData={timelineItems}
         overlayTransforms={overlayTransforms} 
+        videoContainerRef={videoContainerRef}
       />
     </div>
   );

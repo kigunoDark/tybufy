@@ -137,6 +137,7 @@ app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/script/", aiLimiter);
 app.use("/api/audio/", aiLimiter);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Logging
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
@@ -145,7 +146,13 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 if (process.env.NODE_ENV === "development" && !process.env.VERCEL) {
   try {
     app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-    app.use("/output", express.static(path.join(__dirname, "output")));
+    app.use("/output", (req, res, next) => {
+      if (req.path.endsWith(".mp4")) {
+        res.setHeader("Content-Type", "video/mp4");
+        res.setHeader("Content-Disposition", "attachment"); // Принудительное скачивание
+      }
+      next();
+    });
   } catch (error) {
     console.warn("⚠️ Could not setup static file serving:", error.message);
   }
