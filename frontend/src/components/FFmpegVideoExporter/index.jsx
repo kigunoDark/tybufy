@@ -8,7 +8,6 @@ const FFmpegVideoExporter = ({
   overlayTransforms = {},
   videoContainerRef,
 }) => {
-  console.log(timelineData);
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [exportedVideoUrl, setExportedVideoUrl] = useState(null);
@@ -121,8 +120,6 @@ const FFmpegVideoExporter = ({
       }
     });
   };
-
-
 
   const renderFrame = async (
     ctx,
@@ -246,23 +243,10 @@ const FFmpegVideoExporter = ({
               const drawX = baseX + transform.x * scaleX;
               const drawY = baseY + transform.y * scaleY;
 
-              // Применяем opacity из трансформации
               ctx.globalAlpha = item.opacity * transform.opacity;
-
-              console.log("Overlay render:", {
-                itemName: item.name,
-                transform,
-                containerSize: { containerWidth, containerHeight },
-                canvasSize: { canvasWidth, canvasHeight },
-                scales: { scaleX, scaleY },
-                finalPosition: { drawX, drawY },
-                finalSize: { drawWidth, drawHeight },
-                opacity: ctx.globalAlpha,
-              });
 
               ctx.drawImage(element, drawX, drawY, drawWidth, drawHeight);
             } else {
-              // Для основных изображений (не overlay) используем настройки масштабирования
               const imgAspect = element.width / element.height;
               const canvasAspect = canvasWidth / canvasHeight;
 
@@ -329,7 +313,7 @@ const FFmpegVideoExporter = ({
             ctx.restore();
           }
         } catch (error) {
-          console.error("Ошибка рендеринга элемента:", error);
+          console.error("Error rendering element:", error);
         }
       }
     }
@@ -356,7 +340,7 @@ const FFmpegVideoExporter = ({
         loadedCount++;
         setProgress(5 + (loadedCount / timelineData.length) * 20);
       } catch (error) {
-        console.error(`Ошибка загрузки ${item.name}:`, error);
+        console.error(`Loading error ${item.name}:`, error);
       }
     }
 
@@ -367,7 +351,7 @@ const FFmpegVideoExporter = ({
     );
 
     const fps = exportSettings.fps;
-    const frameInterval = 1 / fps; // В СЕКУНДАХ, не миллисекундах!
+    const frameInterval = 1 / fps;
     const totalFrames = Math.ceil(totalDuration * fps);
 
     const audioContext = new (window.AudioContext || window.webkitAudioContext)(
@@ -405,7 +389,7 @@ const FFmpegVideoExporter = ({
 
         audioSources.push({ source, gainNode, item, element });
       } catch (error) {
-        console.warn(`Не удалось подключить аудио ${item.name}:`, error);
+        console.warn(`Failed to connect audio ${item.name}:`, error);
       }
     }
 
@@ -438,7 +422,7 @@ const FFmpegVideoExporter = ({
     }
 
     if (!selectedMimeType) {
-      throw new Error("Браузер не поддерживает запись видео");
+      throw new Error("The browser does not support video recording");
     }
 
     const recordOptions = {
@@ -473,15 +457,15 @@ const FFmpegVideoExporter = ({
           const url = URL.createObjectURL(blob);
           resolve(url);
         } catch (error) {
-          console.error("Ошибка создания blob:", error);
+          console.error("Error creating blob:", error);
           reject(error);
         }
       };
 
       mediaRecorder.onerror = (event) => {
-        console.error("Ошибка MediaRecorder:", event);
+        console.error("MediaRecorder Error", event);
         audioContext.close();
-        reject(new Error("Ошибка записи видео"));
+        reject(new Error("Video recording error"));
       };
 
       mediaRecorder.start(100);
@@ -489,12 +473,10 @@ const FFmpegVideoExporter = ({
 
       let currentFrame = 0;
 
-      // ИСПРАВЛЕНО: Используем setInterval для точного тайминга
       const renderInterval = setInterval(async () => {
         const currentTime = currentFrame * frameInterval;
 
         try {
-          // ИСПРАВЛЕНО: Улучшенная синхронизация аудио/видео
           for (const audioSource of audioSources) {
             const { item, element } = audioSource;
             const itemStartTime = item.startTime;
@@ -503,7 +485,6 @@ const FFmpegVideoExporter = ({
             if (currentTime >= itemStartTime && currentTime <= itemEndTime) {
               const localTime = currentTime - itemStartTime;
 
-              // Устанавливаем время только если нужно
               const targetTime = Math.min(
                 localTime,
                 element.duration || item.duration
@@ -514,19 +495,14 @@ const FFmpegVideoExporter = ({
                 try {
                   await element.play();
                 } catch (error) {
-                  console.warn(
-                    `Не удалось воспроизвести аудио ${item.name}:`,
-                    error
-                  );
+                  console.warn(`Failed to play audio ${item.name}:`, error);
                 }
               } else {
-                // Корректируем время только если есть значительное расхождение
                 if (Math.abs(element.currentTime - targetTime) > 0.1) {
                   element.currentTime = targetTime;
                 }
               }
             } else {
-              // Останавливаем элементы, которые не должны воспроизводиться
               if (!element.paused) {
                 element.pause();
                 element.currentTime = 0;
@@ -534,7 +510,6 @@ const FFmpegVideoExporter = ({
             }
           }
 
-          // Рендерим кадр
           await renderFrame(
             ctx,
             mediaElements,
@@ -548,17 +523,14 @@ const FFmpegVideoExporter = ({
 
           currentFrame++;
 
-          // Проверяем завершение
           if (currentFrame >= totalFrames) {
             clearInterval(renderInterval);
 
-            // Останавливаем все аудио элементы
             for (const audioSource of audioSources) {
               audioSource.element.pause();
               audioSource.element.currentTime = 0;
             }
 
-            // Даем время на запись последних кадров
             setTimeout(() => {
               if (mediaRecorder.state === "recording") {
                 mediaRecorder.stop();
@@ -566,7 +538,7 @@ const FFmpegVideoExporter = ({
             }, 500);
           }
         } catch (error) {
-          console.error("Ошибка рендеринга кадра:", error);
+          console.error("Frame rendering error:", error);
           clearInterval(renderInterval);
 
           for (const audioSource of audioSources) {
@@ -578,7 +550,7 @@ const FFmpegVideoExporter = ({
           }
           reject(error);
         }
-      }, frameInterval * 1000); // Конвертируем в миллисекунды для setInterval
+      }, frameInterval * 1000);
     });
   };
 
@@ -597,8 +569,8 @@ const FFmpegVideoExporter = ({
       setCurrentStep("completed");
       setProgress(100);
     } catch (error) {
-      console.error("Ошибка экспорта:", error);
-      alert(`Ошибка экспорта: ${error.message}`);
+      console.error("Export error:", error);
+      alert(`Export error: ${error.message}`);
       setCurrentStep("settings");
     } finally {
       setIsExporting(false);
@@ -653,13 +625,13 @@ const FFmpegVideoExporter = ({
               <div>
                 <h3 className="text-lg font-medium mb-4 flex items-center">
                   <Settings className="w-5 h-5 mr-2" />
-                  Настройки экспорта
+                  Export settings
                 </h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Разрешение
+                      Permission
                     </label>
                     <select
                       value={exportSettings.resolution}
@@ -681,7 +653,7 @@ const FFmpegVideoExporter = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Частота кадров
+                      Frame rate
                     </label>
                     <select
                       value={exportSettings.fps}
@@ -701,7 +673,7 @@ const FFmpegVideoExporter = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Качество
+                      Quality
                     </label>
                     <select
                       value={exportSettings.quality}
@@ -713,25 +685,25 @@ const FFmpegVideoExporter = ({
                       }
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="low">Низкое (2 Mbps)</option>
-                      <option value="medium">Среднее (4 Mbps)</option>
-                      <option value="high">Высокое (8 Mbps)</option>
+                      <option value="low">Low (2 Mbps)</option>
+                      <option value="medium">Average (4 Mbps)</option>
+                      <option value="high">High (8 Mbps)</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Формат
+                      Format
                     </label>
                     <div className="p-2 bg-blue-50 rounded-md text-sm text-blue-800">
-                      WebM (автоматический выбор лучшего кодека)
+                      WebM (Automatic selection of the best codec)
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Масштабирование изображений
+                    Scaling images
                   </label>
                   <select
                     value={exportSettings.imageScaling}
@@ -744,12 +716,12 @@ const FFmpegVideoExporter = ({
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="original">
-                      Оригинальный размер (рекомендуется)
+                      Original size (recommended)
                     </option>
-                    <option value="fit">Вписать (с черными полосами)</option>
-                    <option value="fill">Заполнить (обрезка по краям)</option>
+                    <option value="fit">Fit (with black stripes)</option>
+                    <option value="fill">Fill (cut off edges)</option>
                     <option value="stretch">
-                      Растянуть (может исказить пропорции)
+                      Stretch (may distort proportions)
                     </option>
                   </select>
                 </div>
@@ -763,13 +735,13 @@ const FFmpegVideoExporter = ({
               <div>
                 <h3 className="text-lg font-medium mb-2">Экспорт видео...</h3>
                 <p className="text-gray-600">
-                  Пожалуйста, не закрывайте это окно
+                  Please do not close this window.
                 </p>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Прогресс</span>
+                  <span>Progress</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
@@ -785,8 +757,8 @@ const FFmpegVideoExporter = ({
           {currentStep === "completed" && (
             <div className="text-center space-y-6">
               <div>
-                <h3 className="text-lg font-medium mb-2">Экспорт завершен!</h3>
-                <p className="text-gray-600">Ваше видео готово к скачиванию</p>
+                <h3 className="text-lg font-medium mb-2">Export completed!</h3>
+                <p className="text-gray-600">Your video is ready to download</p>
               </div>
 
               {exportedVideoUrl && (
@@ -802,7 +774,7 @@ const FFmpegVideoExporter = ({
                     className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors mx-auto"
                   >
                     <Download className="w-5 h-5" />
-                    <span>Скачать видео</span>
+                    <span>Download video</span>
                   </button>
                 </div>
               )}
@@ -824,7 +796,7 @@ const FFmpegVideoExporter = ({
                   disabled={isExporting}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
                 >
-                  Отмена
+                  Cancel
                 </button>
                 <button
                   onClick={handleExport}
@@ -832,7 +804,7 @@ const FFmpegVideoExporter = ({
                   className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors"
                 >
                   <Play className="w-4 h-4" />
-                  <span>Начать экспорт</span>
+                  <span>Start export</span>
                 </button>
               </div>
             </>
@@ -844,13 +816,13 @@ const FFmpegVideoExporter = ({
                 onClick={() => setCurrentStep("settings")}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
-                Новый экспорт
+                New export
               </button>
               <button
                 onClick={handleClose}
                 className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
               >
-                Закрыть
+                Close
               </button>
             </div>
           )}

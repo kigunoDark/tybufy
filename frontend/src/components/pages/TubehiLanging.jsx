@@ -19,7 +19,7 @@ import {
   Crown,
 } from "lucide-react";
 
-const TubifyLanding = () => {
+const TubeHiLanding = () => {
   const { isAuthenticated, loading } = useAuth();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [stats, setStats] = useState({
@@ -48,11 +48,10 @@ const TubifyLanding = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // ✅ Функция для плавной прокрутки
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      const headerOffset = 80; // Учитываем высоту фиксированной навигации
+      const headerOffset = 80;
       const elementPosition = element.offsetTop;
       const offsetPosition = elementPosition - headerOffset;
 
@@ -78,7 +77,7 @@ const TubifyLanding = () => {
       role: "Lifestyle Blogger",
       company: "450K subscribers",
       avatar: "👩‍🎨",
-      text: "AI thumbnails get me more clicks than my designer! Views increased by 40% since using Tubify.",
+      text: "AI thumbnails get me more clicks than my designer! Views increased by 40% since using TubeHi.",
       results: "+40% views",
       logo: "MS",
     },
@@ -278,9 +277,9 @@ const TubifyLanding = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
               <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Create AI content like a
+                Your all-in-one AI studio 
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block">
-                  pro in minutes
+                for Your Videos
                 </span>
               </h1>
 
@@ -342,7 +341,7 @@ const TubifyLanding = () => {
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-slate-200/50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-800">
-                    🎬 Tubify Studio
+                    🎬 TubeHi Studio
                   </h3>
                   <div className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -405,7 +404,7 @@ const TubifyLanding = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Before and After Tubify
+              Before and After TubeHi
             </h2>
             <p className="text-xl text-gray-600">Real results from our users</p>
           </div>
@@ -454,7 +453,7 @@ const TubifyLanding = () => {
               Everything you need to create amazing content
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Tubify provides all the AI tools you need to create engaging
+              TubeHi provides all the AI tools you need to create engaging
               content that converts viewers into subscribers
             </p>
           </div>
@@ -523,7 +522,7 @@ const TubifyLanding = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-6">
-              What content creators say about Tubify
+              What content creators say about TubeHi
             </h2>
             <p className="text-xl text-gray-600">
               Join thousands of creators who've transformed their workflow
@@ -749,7 +748,7 @@ const TubifyLanding = () => {
           </h2>
 
           <p className="text-xl text-blue-100 mb-12 max-w-2xl mx-auto">
-            Join thousands of creators who use Tubify to generate scripts,
+            Join thousands of creators who use TubeHi to generate scripts,
             thumbnails, and voiceovers with AI. Start free, no credit card
             required.
           </p>
@@ -771,4 +770,4 @@ const TubifyLanding = () => {
   );
 };
 
-export default TubifyLanding;
+export default TubeHiLanding;
