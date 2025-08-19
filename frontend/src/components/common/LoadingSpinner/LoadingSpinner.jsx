@@ -84,9 +84,7 @@ const TubehiLanging = () => {
   const companies = [
     { name: "YouTube", logo: "🎬" },
     { name: "TikTok", logo: "🎵" },
-    { name: "Twitch", logo: "🎮" },
     { name: "Instagram", logo: "📷" },
-    { name: "LinkedIn", logo: "💼" },
   ];
 
   const features = [

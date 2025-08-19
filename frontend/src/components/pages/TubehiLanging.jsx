@@ -95,9 +95,7 @@ const TubeHiLanding = () => {
   const companies = [
     { name: "YouTube", logo: "🎬" },
     { name: "TikTok", logo: "🎵" },
-    { name: "Twitch", logo: "🎮" },
     { name: "Instagram", logo: "📷" },
-    { name: "LinkedIn", logo: "💼" },
   ];
 
   const features = [
@@ -150,18 +148,18 @@ const TubeHiLanding = () => {
 
   const plans = [
     {
-      name: "Starter",
+      name: "Free Plan",
       price: "Free",
       period: "/forever",
-      description: "Perfect for trying out our platform",
+      description: "Best for testing TubeHi risk-free",
       features: [
         "3 scripts per month",
         "10k characters audio generation",
         "5 thumbnails per month",
-        "Basic voices",
+        "Basic AI voices",
         "Community support",
       ],
-      credits: "Free forever",
+      credits: "Forever free",
       popular: false,
       planId: "free",
     },
@@ -169,16 +167,15 @@ const TubeHiLanding = () => {
       name: "Creator Plan",
       price: "$9.99",
       period: "/month",
-      description: "Perfect for content creators",
+      description: "Perfect for active content creators",
       features: [
         "25 scripts per month",
         "60k characters audio generation",
         "30 thumbnails per month",
-        "All voices available",
-        "HD export quality",
+        "All AI voices + HD export",
         "Priority support",
       ],
-      credits: "Great for individuals",
+      credits: "🔥 Most Popular",
       popular: true,
       planId: "creator",
     },
@@ -186,35 +183,17 @@ const TubeHiLanding = () => {
       name: "Pro Plan",
       price: "$24.99",
       period: "/month",
-      description: "For professional creators and small business",
+      description: "For professional creators and small teams",
       features: [
         "100 scripts per month",
         "200k characters audio generation",
         "100 thumbnails per month",
-        "API access",
+        "API access + analytics",
         "Priority support",
-        "Advanced analytics",
       ],
-      credits: "Most popular",
+      credits: "Best for power users",
       popular: false,
       planId: "pro",
-    },
-    {
-      name: "Agency Plan",
-      price: "$79.99",
-      period: "/month",
-      description: "For agencies and large teams",
-      features: [
-        "Unlimited scripts",
-        "800k characters audio generation",
-        "500 thumbnails per month",
-        "Full API access",
-        "White label options",
-        "Dedicated account manager",
-      ],
-      credits: "Enterprise solution",
-      popular: false,
-      planId: "agency",
     },
   ];
 
@@ -249,7 +228,6 @@ const TubeHiLanding = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-
       {/* HERO SECTION */}
       <section className="pt-32 pb-12 px-6">
         <div className="max-w-7xl mx-auto">
@@ -277,9 +255,9 @@ const TubeHiLanding = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
               <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Your all-in-one AI studio 
+                Your all-in-one
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block">
-                for Your Videos
+                  AI video studio
                 </span>
               </h1>
 
@@ -630,7 +608,7 @@ const TubeHiLanding = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, i) => (
             <div
               key={i}
@@ -643,6 +621,7 @@ const TubeHiLanding = () => {
                   </div>
                 </div>
               )}
+
               <div
                 className={`bg-white/80 backdrop-blur-sm rounded-3xl p-8 border-2 shadow-xl hover:shadow-2xl transition-all duration-300 h-full ${
                   plan.popular ? "border-blue-500" : "border-slate-200/50"
