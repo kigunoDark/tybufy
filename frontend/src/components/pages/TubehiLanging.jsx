@@ -1,4 +1,4 @@
-import { useState, useEffect, cloneElement } from "react";
+import { useState, useEffect, cloneElement, Fragment } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -128,21 +128,55 @@ const TubeHiLanding = () => {
     },
   ];
 
-  const beforeAfter = [
+  const steps = [
     {
-      before: "2 hours to write a script",
-      after: "2 minutes with AI generation",
-      improvement: "60x faster",
+      number: "01",
+      icon: "📜",
+      title: "Script",
+      description:
+        "Generate or polish your video script with AI + get quality score.",
+      color: "from-purple-500 to-pink-500",
+      bgColor: "bg-purple-50",
+      borderColor: "border-purple-200",
     },
     {
-      before: "Expensive thumbnail designers",
-      after: "AI thumbnails for pennies",
-      improvement: "90% cost savings",
+      number: "02",
+      icon: "🎙️",
+      title: "Voice",
+      description:
+        "Convert text into natural AI voices or use teleprompter to record yours.",
+      color: "from-blue-500 to-cyan-500",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-200",
     },
     {
-      before: "Recording voiceovers yourself",
-      after: "AI voices in any language",
-      improvement: "Unlimited voices",
+      number: "03",
+      icon: "🎬",
+      title: "Record & Edit",
+      description:
+        "Sync voice, trim clips, and add sounds with our lightweight editor.",
+      color: "from-green-500 to-emerald-500",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-200",
+    },
+    {
+      number: "04",
+      icon: "🖼️",
+      title: "Thumbnail",
+      description: "Generate eye-catching thumbnails that boost clicks.",
+      color: "from-orange-500 to-red-500",
+      bgColor: "bg-orange-50",
+      borderColor: "border-orange-200",
+    },
+    {
+      number: "05",
+      icon: "🚀",
+      title: "Export",
+      description:
+        "Publish your video in HD directly to YouTube, TikTok, or Instagram.",
+      color: "from-indigo-500 to-purple-500",
+      bgColor: "bg-indigo-50",
+      borderColor: "border-indigo-200",
     },
   ];
 
@@ -377,48 +411,117 @@ const TubeHiLanding = () => {
         </div>
       </section>
 
-      {/* BEFORE AFTER SECTION */}
-      <section className="py-16 px-6 bg-white/30 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Before and After TubeHi
+      <section className="py-20 bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+          <div className="absolute top-40 right-20 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          {/* Header */}
+          <div className="text-center mb-16 animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-purple-100 border border-blue-200 rounded-full px-6 py-2 mb-6">
+              <Sparkles size={16} className="text-blue-600 animate-pulse" />
+              <span className="text-blue-800 font-semibold text-sm">
+                AI-Powered Workflow
+              </span>
+            </div>
+
+            <h2 className="text-5xl font-black text-gray-900 mb-6 leading-tight">
+              From Idea to Published Video in{" "}
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                5 Simple Steps
+              </span>
             </h2>
-            <p className="text-xl text-gray-600">Real results from our users</p>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Our streamlined AI workflow transforms your creative ideas into
+              professional content in minutes, not hours
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {beforeAfter.map((item, index) => (
-              <div
-                key={index}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-slate-200/50"
-              >
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl">❌</span>
-                  </div>
-                  <h4 className="font-semibold text-gray-600 mb-2">BEFORE</h4>
-                  <p className="text-gray-700">{item.before}</p>
-                </div>
-
-                <div className="flex justify-center mb-6">
-                  <ArrowRight size={24} className="text-blue-500" />
-                </div>
-
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl">✅</span>
-                  </div>
-                  <h4 className="font-semibold text-gray-600 mb-2">AFTER</h4>
-                  <p className="text-gray-700 mb-4">{item.after}</p>
-                  <div className="bg-gradient-to-r from-green-100 to-teal-100 rounded-full px-4 py-2 border border-green-300">
-                    <span className="text-green-800 font-bold text-sm">
-                      {item.improvement}
+          {/* Steps Row */}
+          <div className="flex flex-wrap justify-center items-center gap-4 lg:gap-6 mb-16">
+            {steps.map((step, index) => (
+              <Fragment key={index}>
+                {/* Step Card */}
+                <div
+                  className={`group flex items-center gap-4 ${step.bgColor} ${step.borderColor} border-2 rounded-3xl px-6 py-4 hover:shadow-2xl transition-all duration-500 hover:scale-105 animate-fade-in-up relative`}
+                  style={{ animationDelay: `${index * 150}ms` }}
+                >
+                  {/* Step Number Badge */}
+                  <div
+                    className={`w-12 h-12 bg-gradient-to-r ${step.color} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}
+                  >
+                    <span className="text-white font-black text-sm">
+                      {step.number}
                     </span>
+                  </div>
+
+                  {/* Icon */}
+                  <div className="w-14 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center group-hover:shadow-xl transition-shadow duration-300 group-hover:animate-bounce flex-shrink-0">
+                    <span className="text-2xl filter drop-shadow-sm">
+                      {step.icon}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="text-left">
+                    <h3 className="text-lg font-black text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+                      {step.title}
+                    </h3>
+                    <p className="text-gray-600 text-xs leading-tight max-w-xs">
+                      {step.description}
+                    </p>
+                  </div>
+
+                  {/* Hover Glow Effect */}
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-r ${step.color} opacity-0 group-hover:opacity-10 rounded-3xl transition-opacity duration-300`}
+                  ></div>
+                </div>
+
+                {/* Arrow between steps */}
+                {index < steps.length - 1 && (
+                  <div className="hidden lg:flex items-center animate-pulse">
+                    <ArrowRight size={20} className="text-gray-400" />
+                  </div>
+                )}
+              </Fragment>
+            ))}
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="text-center animate-fade-in-up animation-delay-800">
+            <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl p-12 shadow-2xl hover:shadow-3xl transition-shadow duration-300">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <Zap size={32} className="text-yellow-300 animate-pulse" />
+                  <h3 className="text-3xl font-black text-white">
+                    Ready to Transform Your Content Creation?
+                  </h3>
+                  <Zap size={32} className="text-yellow-300 animate-pulse" />
+                </div>
+
+                <p className="text-xl text-blue-100 mb-8 leading-relaxed">
+                  Join thousands of creators who've revolutionized their
+                  workflow. Start creating professional content in minutes, not
+                  hours.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                  <button className="group bg-white hover:bg-gray-100 text-blue-600 font-black px-8 py-4 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-3">
+                    <Sparkles size={20} className="group-hover:animate-spin" />
+                    <span>Start Creating for Free</span>
+                  </button>
+
+                  <div className="text-blue-200 text-sm">
+                    ✨ No credit card required • 3 free scripts included
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
