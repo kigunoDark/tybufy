@@ -18,6 +18,7 @@ import {
   Building,
   Crown,
 } from "lucide-react";
+import VideoBlock from "./DemoVideo";
 
 const TubeHiLanding = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -350,69 +351,13 @@ const TubeHiLanding = () => {
             </div>
 
             <div className="relative">
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-slate-200/50">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-800">
-                    🎬 TubeHi Studio
-                  </h3>
-                  <div className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-green-700 font-semibold text-sm">
-                      AI Working
-                    </span>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-gray-700 font-semibold">
-                      Content Score
-                    </span>
-                    <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      92/100
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full"
-                      style={{ width: "92%" }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="bg-black rounded-lg p-4 mb-4">
-                  <div className="text-white text-center text-lg leading-relaxed">
-                    "Hey everyone! Today I'll show you how to..."
-                  </div>
-                  <div className="h-0.5 bg-blue-500 mt-2 rounded-full opacity-60"></div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    <div className="bg-green-500 text-white px-3 py-1 rounded text-sm">
-                      ✨ Script
-                    </div>
-                    <div className="bg-blue-500 text-white px-3 py-1 rounded text-sm">
-                      🎙️ Voice
-                    </div>
-                    <div className="bg-purple-500 text-white px-3 py-1 rounded text-sm">
-                      🖼️ Thumbnail
-                    </div>
-                  </div>
-                  <span className="text-gray-500 text-sm">Generated</span>
-                </div>
-              </div>
-
-              <div className="absolute -top-4 -right-4 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                🚀 AI Powered
-              </div>
+              <VideoBlock />
             </div>
           </div>
         </div>
       </section>
 
       <section className="py-20 bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
-        {/* Background decoration */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-20 left-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
           <div className="absolute top-40 right-20 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
@@ -420,7 +365,6 @@ const TubeHiLanding = () => {
         </div>
 
         <div className="max-w-7xl mx-auto px-6 relative z-10">
-          {/* Header */}
           <div className="text-center mb-16 animate-fade-in-up">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-purple-100 border border-blue-200 rounded-full px-6 py-2 mb-6">
               <Sparkles size={16} className="text-blue-600 animate-pulse" />
@@ -441,16 +385,13 @@ const TubeHiLanding = () => {
             </p>
           </div>
 
-          {/* Steps Row */}
           <div className="flex flex-wrap justify-center items-center gap-4 lg:gap-6 mb-16">
             {steps.map((step, index) => (
               <Fragment key={index}>
-                {/* Step Card */}
                 <div
                   className={`group flex items-center gap-4 ${step.bgColor} ${step.borderColor} border-2 rounded-3xl px-6 py-4 hover:shadow-2xl transition-all duration-500 hover:scale-105 animate-fade-in-up relative`}
                   style={{ animationDelay: `${index * 150}ms` }}
                 >
-                  {/* Step Number Badge */}
                   <div
                     className={`w-12 h-12 bg-gradient-to-r ${step.color} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}
                   >
@@ -459,14 +400,12 @@ const TubeHiLanding = () => {
                     </span>
                   </div>
 
-                  {/* Icon */}
                   <div className="w-14 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center group-hover:shadow-xl transition-shadow duration-300 group-hover:animate-bounce flex-shrink-0">
                     <span className="text-2xl filter drop-shadow-sm">
                       {step.icon}
                     </span>
                   </div>
 
-                  {/* Content */}
                   <div className="text-left">
                     <h3 className="text-lg font-black text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
                       {step.title}
@@ -476,13 +415,11 @@ const TubeHiLanding = () => {
                     </p>
                   </div>
 
-                  {/* Hover Glow Effect */}
                   <div
                     className={`absolute inset-0 bg-gradient-to-r ${step.color} opacity-0 group-hover:opacity-10 rounded-3xl transition-opacity duration-300`}
                   ></div>
                 </div>
 
-                {/* Arrow between steps */}
                 {index < steps.length - 1 && (
                   <div className="hidden lg:flex items-center animate-pulse">
                     <ArrowRight size={20} className="text-gray-400" />
@@ -492,7 +429,6 @@ const TubeHiLanding = () => {
             ))}
           </div>
 
-          {/* Bottom CTA */}
           <div className="text-center animate-fade-in-up animation-delay-800">
             <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl p-12 shadow-2xl hover:shadow-3xl transition-shadow duration-300">
               <div className="max-w-4xl mx-auto">
@@ -526,7 +462,6 @@ const TubeHiLanding = () => {
         </div>
       </section>
 
-      {/* FEATURES SECTION */}
       <section id="features" className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -595,7 +530,6 @@ const TubeHiLanding = () => {
         </div>
       </section>
 
-      {/* TESTIMONIALS SECTION */}
       <section
         id="testimonials"
         className="py-20 px-6 bg-gradient-to-r from-slate-50 to-blue-50"
@@ -699,7 +633,6 @@ const TubeHiLanding = () => {
         </div>
       </section>
 
-      {/* PRICING SECTION */}
       <section id="pricing" className="py-20 px-6">
         <div className="max-w-7xl mx-auto text-center mb-16">
           <h2 className="text-4xl font-bold text-gray-900 mb-6">
@@ -822,7 +755,6 @@ const TubeHiLanding = () => {
         </div>
       </section>
 
-      {/* CTA SECTION */}
       <section className="py-20 px-6 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-8">
