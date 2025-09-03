@@ -245,12 +245,12 @@ const Pricing = () => {
 
   const getPlanIcon = (planId) => {
     switch (planId) {
-      case "creator":
+      case "boost":
         return <Star className="w-8 h-8 text-blue-600" />;
       case "pro":
         return <Zap className="w-8 h-8 text-purple-600" />;
-      case "agency":
-        return <Building className="w-8 h-8 text-orange-600" />;
+      case "free":
+        return <Crown className="w-8 h-8 text-gray-600" />;
       default:
         return <Star className="w-8 h-8 text-gray-600" />;
     }
@@ -258,21 +258,20 @@ const Pricing = () => {
 
   const getPlanStyles = (planId) => {
     switch (planId) {
-      case "creator":
+      case "boost":
         return {
-          border: "border-blue-200 hover:border-blue-300",
+          border: "border-blue-200 hover:border-blue-300 ring-2 ring-blue-200",
           button: "bg-blue-600 hover:bg-blue-700",
         };
       case "pro":
         return {
-          border:
-            "border-purple-200 hover:border-purple-300 ring-2 ring-purple-200",
+          border: "border-purple-200 hover:border-purple-300",
           button: "bg-purple-600 hover:bg-purple-700",
         };
-      case "agency":
+      case "free":
         return {
-          border: "border-orange-200 hover:border-orange-300",
-          button: "bg-orange-600 hover:bg-orange-700",
+          border: "border-gray-200 hover:border-gray-300",
+          button: "bg-gray-600 hover:bg-gray-700",
         };
       default:
         return {
@@ -393,124 +392,202 @@ const Pricing = () => {
           </div>
         )}
 
-        <div className="mb-8">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 max-w-md mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {/* Free Plan */}
+          <div className="bg-white rounded-lg border-2 border-gray-200 hover:border-gray-300 shadow-sm p-6 relative transition-all">
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Starter
-              </h3>
-              <div className="mb-4">
-                <span className="text-4xl font-bold text-gray-900">$0</span>
-                <span className="text-gray-600">/month</span>
+              <div className="flex justify-center mb-4">
+                <div className="p-3 bg-gray-50 rounded-full">
+                  <Crown className="w-8 h-8 text-gray-600" />
+                </div>
               </div>
+
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Free Plan
+              </h3>
+
+              <div className="mb-4">
+                <span className="text-4xl font-bold text-gray-900">Free</span>
+                <span className="text-gray-600">/forever</span>
+              </div>
+
               <p className="text-gray-600 mb-6">
-                Perfect for trying out our platform
+                Best for testing TubeHi risk-free
               </p>
 
               <ul className="text-left space-y-3 mb-6">
                 <li className="flex items-center">
-                  <Check className="w-4 h-4 text-green-500 mr-3" />
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
                   <span className="text-sm">3 scripts per month</span>
                 </li>
                 <li className="flex items-center">
-                  <Check className="w-4 h-4 text-green-500 mr-3" />
-                  <span className="text-sm">10 minutes of audio</span>
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">
+                    10k characters audio generation
+                  </span>
                 </li>
                 <li className="flex items-center">
-                  <Check className="w-4 h-4 text-green-500 mr-3" />
-                  <span className="text-sm">5 thumbnails</span>
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">5 thumbnails per month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">Basic AI voices</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">Community support</span>
                 </li>
               </ul>
 
               <button
-                className="w-full py-2 px-4 bg-gray-600 text-white rounded-md transition-colors cursor-not-allowed"
+                className="w-full py-3 px-4 bg-gray-600 text-white rounded-md transition-colors font-medium cursor-not-allowed"
                 disabled
               >
                 {userInfo?.subscription === "free"
                   ? "Current Plan"
-                  : "Free Forever"}
+                  : "Start Free"}
               </button>
             </div>
           </div>
-        </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {plans.map((plan) => {
-            const styles = getPlanStyles(plan.planId);
-            const isCurrentPlan = userInfo?.subscription === plan.planId;
-            const isProcessing = processingPlan === plan.planId;
+          {/* Boost Plan */}
+          <div className="bg-white rounded-lg border-2 border-blue-200 hover:border-blue-300 ring-2 ring-blue-200 shadow-sm p-6 relative transition-all">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                🔥 MOST POPULAR
+              </span>
+            </div>
 
-            return (
-              <div
-                key={plan.id}
-                className={`bg-white rounded-lg border-2 shadow-sm p-6 relative transition-all ${styles.border}`}
-              >
-                {plan.planId === "pro" && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-
-                <div className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <div className="p-3 bg-gray-50 rounded-full">
-                      {getPlanIcon(plan.planId)}
-                    </div>
-                  </div>
-
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {plan.name}
-                  </h3>
-
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-gray-900">
-                      ${(plan.amount / 100).toFixed(0)}
-                    </span>
-                    <span className="text-gray-600">/{plan.interval}</span>
-                  </div>
-
-                  <p className="text-gray-600 mb-6">{plan.description}</p>
-
-                  <ul className="text-left space-y-3 mb-6">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-center">
-                        <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button
-                    onClick={() => handleUpgrade(plan.id, plan.planId)}
-                    disabled={isCurrentPlan || isProcessing}
-                    className={`w-full py-3 px-4 text-white rounded-md transition-colors font-medium ${
-                      isCurrentPlan
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : isProcessing
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : styles.button
-                    }`}
-                  >
-                    {isCurrentPlan ? (
-                      "Current Plan"
-                    ) : isProcessing ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                        Processing...
-                      </div>
-                    ) : (
-                      `Upgrade to ${
-                        plan.planId.charAt(0).toUpperCase() +
-                        plan.planId.slice(1)
-                      }`
-                    )}
-                  </button>
+            <div className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 bg-gray-50 rounded-full">
+                  <Star className="w-8 h-8 text-blue-600" />
                 </div>
               </div>
-            );
-          })}
+
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Boost
+              </h3>
+
+              <div className="mb-4">
+                <span className="text-4xl font-bold text-gray-900">$16.58</span>
+                <span className="text-gray-600">/month</span>
+              </div>
+
+              <div className="text-sm text-gray-500 mb-4">12 month · $199</div>
+
+              <p className="text-gray-600 mb-6">
+                Perfect for active content creators
+              </p>
+
+              <ul className="text-left space-y-3 mb-6">
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">25 scripts per month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">
+                    60k characters audio generation
+                  </span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">30 thumbnails per month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">All AI voices + HD export</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">Priority support</span>
+                </li>
+              </ul>
+
+              <button
+                onClick={() => handleUpgrade("boost_price_id", "boost")}
+                disabled={userInfo?.subscription === "boost"}
+                className={`w-full py-3 px-4 text-white rounded-md transition-colors font-medium ${
+                  userInfo?.subscription === "boost"
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {userInfo?.subscription === "boost"
+                  ? "Current Plan"
+                  : "Choose Plan"}
+              </button>
+            </div>
+          </div>
+
+          {/* Pro Plan */}
+          <div className="bg-white rounded-lg border-2 border-purple-200 hover:border-purple-300 shadow-sm p-6 relative transition-all">
+            <div className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 bg-gray-50 rounded-full">
+                  <Zap className="w-8 h-8 text-purple-600" />
+                </div>
+              </div>
+
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Pro Plan
+              </h3>
+
+              <div className="mb-4">
+                <span className="text-4xl font-bold text-gray-900">$99</span>
+                <span className="text-gray-600">/month</span>
+              </div>
+
+              <div className="text-sm text-gray-500 mb-4">
+                12 month · $1,188
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                For professional creators and small teams
+              </p>
+
+              <ul className="text-left space-y-3 mb-6">
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">100 scripts per month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">
+                    200k characters audio generation
+                  </span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">100 thumbnails per month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">API access + analytics</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-sm">Priority support</span>
+                </li>
+              </ul>
+
+              <button
+                onClick={() => handleUpgrade("pro_price_id", "pro")}
+                disabled={userInfo?.subscription === "pro"}
+                className={`w-full py-3 px-4 text-white rounded-md transition-colors font-medium ${
+                  userInfo?.subscription === "pro"
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-purple-600 hover:bg-purple-700"
+                }`}
+              >
+                {userInfo?.subscription === "pro"
+                  ? "Current Plan"
+                  : "Choose Plan"}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-16 max-w-4xl mx-auto">

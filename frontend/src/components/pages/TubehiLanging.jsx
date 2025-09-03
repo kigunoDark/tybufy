@@ -199,8 +199,8 @@ const TubeHiLanding = () => {
       planId: "free",
     },
     {
-      name: "Creator Plan",
-      price: "$9.99",
+      name: "Boost",
+      price: "$16.58",
       period: "/month",
       description: "Perfect for active content creators",
       features: [
@@ -210,13 +210,13 @@ const TubeHiLanding = () => {
         "All AI voices + HD export",
         "Priority support",
       ],
-      credits: "🔥 Most Popular",
+      credits: "12 month · $199",
       popular: true,
       planId: "creator",
     },
     {
       name: "Pro Plan",
-      price: "$24.99",
+      price: "$99",
       period: "/month",
       description: "For professional creators and small teams",
       features: [
@@ -226,13 +226,11 @@ const TubeHiLanding = () => {
         "API access + analytics",
         "Priority support",
       ],
-      credits: "Best for power users",
+      credits: "12 month · $1,188",
       popular: false,
       planId: "pro",
     },
   ];
-
-  // ✅ Функция для получения иконки плана
   const getPlanIcon = (planId) => {
     switch (planId) {
       case "creator":

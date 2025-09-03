@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { X, Download, Settings, Play, Loader2 } from "lucide-react";
+import ThumbnailQuestionModal from "../ThumbnailCreator/ThumbnailQuestionModal";
+import ThumbnailCreator from "../ThumbnailCreator/ThumbnailCreator";
 
 const FFmpegVideoExporter = ({
   isOpen,
@@ -10,6 +12,7 @@ const FFmpegVideoExporter = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [showThumbnailModal, setShowThumbnailModal] = useState(false);
   const [exportedVideoUrl, setExportedVideoUrl] = useState(null);
   const [exportSettings, setExportSettings] = useState({
     resolution: "1920x1080",
@@ -19,6 +22,7 @@ const FFmpegVideoExporter = ({
     imageScaling: "fit",
   });
   const [currentStep, setCurrentStep] = useState("settings");
+  const [isThumbnailModalOpen, setThumbnailModalOpen] = useState(false);
 
   const canvasRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -587,8 +591,14 @@ const FFmpegVideoExporter = ({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setThumbnailModalOpen(true);
     }
   };
+
+  const handleStartThumbnail = (state) => {
+    setShowThumbnailModal(state);
+    setThumbnailModalOpen(false)
+  }
 
   const handleClose = () => {
     if (exportedVideoUrl) {
@@ -828,6 +838,16 @@ const FFmpegVideoExporter = ({
           )}
         </div>
       </div>
+      <ThumbnailQuestionModal
+        isOpen={isThumbnailModalOpen}
+        onResponse={handleStartThumbnail}
+      />
+
+      <ThumbnailCreator
+        isOpen={showThumbnailModal}
+        onClose={setShowThumbnailModal}
+        exportSettings={exportSettings}
+      />
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
