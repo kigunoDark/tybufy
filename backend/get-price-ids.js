@@ -1,16 +1,16 @@
 // Создайте файл get-price-ids.js в папке backend:
 
 require('dotenv').config();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')(process.env.STRIPE_LIVE_SECRET);
 
 async function getPriceIds() {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('❌ STRIPE_SECRET_KEY не найден в .env файле!');
+    if (!process.env.STRIPE_LIVE_SECRET) {
+      console.error('❌ STRIPE_LIVE_SECRET не найден в .env файле!');
       return;
     }
 
-    const isTestMode = process.env.STRIPE_SECRET_KEY.startsWith('sk_test_');
+    const isTestMode = process.env.STRIPE_LIVE_SECRET.startsWith('sk_test_');
     
     const prices = await stripe.prices.list({
       limit: 100,
@@ -22,41 +22,70 @@ async function getPriceIds() {
       return;
     }
 
-    // Автоматический поиск по цене
-    const price999 = prices.data.find(p => p.unit_amount === 999);
-    const price2499 = prices.data.find(p => p.unit_amount === 2499);
-    const price7999 = prices.data.find(p => p.unit_amount === 7999);
+    console.log(`\n🔍 Найдено ${prices.data.length} цен в ${isTestMode ? 'тестовом' : 'реальном'} режиме Stripe:\n`);
+
+    // Поиск по нужным ценам (в центах)
+    const priceBoost = prices.data.find(p => p.unit_amount === 1658); // $16.58
+    const pricePro = prices.data.find(p => p.unit_amount === 9900);   // $99.00
+    
+    // Показать все найденные цены для справки
+    prices.data.forEach(price => {
+      const amount = (price.unit_amount / 100).toFixed(2);
+      const product = price.product?.name || 'Без названия';
+      console.log(`- ${product}: $${amount}/${price.recurring?.interval} (ID: ${price.id})`);
+    });
+
+    console.log('\n' + '='.repeat(60));
     
     if (isTestMode) {
       console.log(`
-// ✅ ТЕСТОВЫЕ Price IDs (вставьте в server.js):
+// ✅ ТЕСТОВЫЕ Price IDs (вставьте в ваш код):
 const testPriceIds = {
-  'price_creator': '${price999?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$9.99'}',
-  'price_pro': '${price2499?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$24.99'}',
-  'price_agency': '${price7999?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$79.99'}',
-};`);
+  'boost': '${priceBoost?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$16.58'}',
+  'pro': '${pricePro?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$99.00'}',
+};
+
+// Для фронтенда используйте:
+onClick={() => handleUpgrade('${priceBoost?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$16.58'}', 'boost')}
+onClick={() => handleUpgrade('${pricePro?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$99.00'}', 'pro')}`);
     } else {
       console.log(`
-// ✅ РЕАЛЬНЫЕ Price IDs (вставьте в server.js):
-const realPriceIds = {
-  'price_creator': '${price999?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$9.99'}',
-  'price_pro': '${price2499?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$24.99'}',
-  'price_agency': '${price7999?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$79.99'}',
-};`);
+// ✅ РЕАЛЬНЫЕ Price IDs (вставьте в ваш код):
+const livePriceIds = {
+  'boost': '${priceBoost?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$16.58'}',
+  'pro': '${pricePro?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$99.00'}',
+};
+
+// Для фронтенда используйте:
+onClick={() => handleUpgrade('${priceBoost?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$16.58'}', 'boost')}
+onClick={() => handleUpgrade('${pricePro?.id || 'СОЗДАЙТЕ_ПРОДУКТ_$99.00'}', 'pro')}`);
     }
 
     // Проверка недостающих продуктов
     const missing = [];
-    if (!price999) missing.push('$9.99/месяц (Creator)');
-    if (!price2499) missing.push('$24.99/месяц (Pro)');
-    if (!price7999) missing.push('$79.99/месяц (Agency)');
+    if (!priceBoost) missing.push('Boost Plan - $16.58/месяц');
+    if (!pricePro) missing.push('Pro Plan - $99.00/месяц');
 
     if (missing.length > 0) {
-      missing.forEach(item => console.log(`❌ ${item}`));
+      console.log('\n❌ Необходимо создать в Stripe Dashboard:');
+      missing.forEach(item => console.log(`   - ${item}`));
+      console.log('\nИнструкция:');
+      console.log('1. Войдите в Stripe Dashboard');
+      console.log('2. Products → Create product');
+      console.log('3. Создайте продукты с точными ценами: $16.58 и $99.00');
+      console.log('4. Запустите скрипт снова');
     }
+
+    console.log('\n' + '='.repeat(60));
 
   } catch (error) {
     console.error('❌ Ошибка:', error.message);
+    
+    if (error.type === 'StripeAuthenticationError') {
+      console.log('\n💡 Проверьте:');
+      console.log('- Правильность STRIPE_LIVE_SECRET в .env файле');
+      console.log('- Соответствие режима (test/live) в Stripe Dashboard');
+    }
   }
 }
 

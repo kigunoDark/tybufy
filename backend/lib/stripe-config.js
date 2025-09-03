@@ -25,14 +25,12 @@ const stripe = require("stripe")(stripeConfig.secret);
 
 const priceIds = {
   test: {
-    price_creator: "price_1RpF2zK1IDYU2N55qz8OOXOF",
-    price_pro: "price_1RpF3NK1IDYU2N55OaEW6776",
-    price_agency: "price_1RpF3jK1IDYU2N55gGQs196r",
+    boost: "price_1S3PEKKGtjox6w5ruQJkiThU",
+    pro: "price_1S3PJBKGtjox6w5rdL90zKhC",
   },
   live: {
-    price_creator: "price_1RpEBsKGtjox6w5rJ8booXZa",
-    price_pro: "price_1RpECeKGtjox6w5ryTk4Vr6e",
-    price_agency: "price_1RpEEUKGtjox6w5rGQjtKeKY",
+    boost: "price_1S3PEKKGtjox6w5ruQJkiThU",
+    pro: "price_1S3PJBKGtjox6w5rdL90zKhC",
   },
 };
 
