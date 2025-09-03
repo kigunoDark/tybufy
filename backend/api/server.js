@@ -182,7 +182,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/script", scriptRoutes);
 app.use("/api/audio", audioRoutes);
-app.use("/api/thumbnails", thumbnailRoutes);
+// app.use("/api/thumbnails", thumbnailRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/render", renderRoutes);
 
