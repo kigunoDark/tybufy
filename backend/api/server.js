@@ -139,17 +139,15 @@ app.use("/api/script/", aiLimiter);
 app.use("/api/audio/", aiLimiter);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Logging
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// Static file serving for development
 if (process.env.NODE_ENV === "development" && !process.env.VERCEL) {
   try {
     app.use("/uploads", express.static(path.join(__dirname, "uploads")));
     app.use("/output", (req, res, next) => {
       if (req.path.endsWith(".mp4")) {
         res.setHeader("Content-Type", "video/mp4");
-        res.setHeader("Content-Disposition", "attachment"); // Принудительное скачивание
+        res.setHeader("Content-Disposition", "attachment");
       }
       next();
     });
@@ -158,7 +156,6 @@ if (process.env.NODE_ENV === "development" && !process.env.VERCEL) {
   }
 }
 
-// MongoDB connection
 mongoose.connect(
   process.env.MONGODB_URI || "mongodb://localhost:27017/scriptify"
 );

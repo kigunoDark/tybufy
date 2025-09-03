@@ -147,12 +147,6 @@ const Pricing = () => {
         return;
       }
 
-      console.log(
-        "🔄 Sending request to:",
-        `${baseURL}/api/payments/create-checkout-session`
-      );
-      console.log("📦 Request data:", { priceId, planId });
-
       const response = await fetch(
         `${baseURL}/api/payments/create-checkout-session`,
         {
@@ -240,44 +234,6 @@ const Pricing = () => {
       setError(errorMessage);
     } finally {
       setProcessingPlan(null);
-    }
-  };
-
-  const getPlanIcon = (planId) => {
-    switch (planId) {
-      case "boost":
-        return <Star className="w-8 h-8 text-blue-600" />;
-      case "pro":
-        return <Zap className="w-8 h-8 text-purple-600" />;
-      case "free":
-        return <Crown className="w-8 h-8 text-gray-600" />;
-      default:
-        return <Star className="w-8 h-8 text-gray-600" />;
-    }
-  };
-
-  const getPlanStyles = (planId) => {
-    switch (planId) {
-      case "boost":
-        return {
-          border: "border-blue-200 hover:border-blue-300 ring-2 ring-blue-200",
-          button: "bg-blue-600 hover:bg-blue-700",
-        };
-      case "pro":
-        return {
-          border: "border-purple-200 hover:border-purple-300",
-          button: "bg-purple-600 hover:bg-purple-700",
-        };
-      case "free":
-        return {
-          border: "border-gray-200 hover:border-gray-300",
-          button: "bg-gray-600 hover:bg-gray-700",
-        };
-      default:
-        return {
-          border: "border-gray-200",
-          button: "bg-gray-600 hover:bg-gray-700",
-        };
     }
   };
 
@@ -507,7 +463,7 @@ const Pricing = () => {
               </ul>
 
               <button
-                onClick={() => handleUpgrade("boost_price_id", "boost")}
+                onClick={() => handleUpgrade("price_1ABC123def456ghi", "boost")}
                 disabled={userInfo?.subscription === "boost"}
                 className={`w-full py-3 px-4 text-white rounded-md transition-colors font-medium ${
                   userInfo?.subscription === "boost"
@@ -574,7 +530,7 @@ const Pricing = () => {
               </ul>
 
               <button
-                onClick={() => handleUpgrade("pro_price_id", "pro")}
+                onClick={() => handleUpgrade("price_1S3PJBKGtjox6w5rdL90zKhC", "pro")}
                 disabled={userInfo?.subscription === "pro"}
                 className={`w-full py-3 px-4 text-white rounded-md transition-colors font-medium ${
                   userInfo?.subscription === "pro"
